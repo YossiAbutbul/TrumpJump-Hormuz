@@ -1,0 +1,7 @@
+{
+  "start": ["start1.mp3"],
+  "power": ["tremendous.mp3", "winning.mp3"],
+  "milestone": ["huge.mp3"],
+  "death": ["fired.mp3"],
+  "coin": ["money.mp3"]
+}

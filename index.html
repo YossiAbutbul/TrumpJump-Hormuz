@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>TRUMP JUMP: Strait of Hormuz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100dvh;
+    overflow: hidden;
+    background: radial-gradient(1200px 800px at 50% 20%, #16203f 0%, #0a0e22 55%, #05070f 100%);
+    font-family: Arial, sans-serif;
+  }
+  #game {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #game canvas {
+    border-radius: 10px;
+    box-shadow: 0 0 80px rgba(246, 198, 103, 0.18), 0 10px 40px rgba(0, 0, 0, 0.6);
+    touch-action: none;
+  }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
