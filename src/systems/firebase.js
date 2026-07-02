@@ -25,7 +25,7 @@ if (!configured) {
     enabled: false,
     get user() { return null; },
     get profile() { return null; },
-    signIn() { alert('Leaderboard is not set up yet — paste your Firebase config in js/firebase-config.js.'); },
+    signIn() { alert('Leaderboard is not set up yet — paste your Firebase config in src/config/firebase-config.js.'); },
     signOut() {},
     setUsername() { return Promise.resolve(); },
     submitScore() { return Promise.resolve(); },

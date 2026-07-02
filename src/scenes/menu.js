@@ -2,9 +2,12 @@ class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
 
   preload() {
-    this.load.image('trump-img', 'assets/processed/trump.png');
-    this.load.image('trump-fly-img', 'assets/processed/trump-fly.png');
-    this.load.image('trump-hit-img', 'assets/processed/trump-hit.png');
+    // load every character skin; texture keys are skin-<id>-idle / -fly / -hit
+    Object.entries(CATALOG.SKINS).forEach(([id, s]) => {
+      this.load.image(`skin-${id}-idle`, `assets/skins/${s.dir}/idle.png`);
+      this.load.image(`skin-${id}-fly`, `assets/skins/${s.dir}/fly.png`);
+      if (s.hit) this.load.image(`skin-${id}-hit`, `assets/skins/${s.dir}/hit.png`);
+    });
     this.load.on('loaderror', () => {}); // missing art -> procedural fallback
   }
 
@@ -15,11 +18,16 @@ class MenuScene extends Phaser.Scene {
     buildShipTextures(this, save.ship);
     window.VOICE.init(this);
 
-    window.SKIN = {
-      idle: this.textures.exists('trump-img') ? 'trump-img' : 'trump',
-      fly: this.textures.exists('trump-fly-img') ? 'trump-fly-img' : 'trump-fly',
-      hit: this.textures.exists('trump-hit-img') ? 'trump-hit-img' : null,
-    };
+    // resolve the equipped skin's textures, falling back to procedural trump art
+    const id = save.skin || 'trump';
+    const idleKey = `skin-${id}-idle`;
+    window.SKIN = this.textures.exists(idleKey)
+      ? {
+          idle: idleKey,
+          fly: this.textures.exists(`skin-${id}-fly`) ? `skin-${id}-fly` : idleKey,
+          hit: this.textures.exists(`skin-${id}-hit`) ? `skin-${id}-hit` : null,
+        }
+      : { idle: 'trump', fly: 'trump-fly', hit: null };
     const SS = window.SS, TS = window.TEX_SCALE;
     window.setupCamera(this);
     const W = this.scale.width / SS, H = this.scale.height / SS;

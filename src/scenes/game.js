@@ -222,7 +222,7 @@ class GameScene extends Phaser.Scene {
 
   // ---------- spawning ----------
 
-  difficulty() { return Phaser.Math.Clamp(this.maxMeters / 1500, 0, 1); }
+  difficulty() { return Phaser.Math.Clamp(this.maxMeters / 2600, 0, 1); }
 
   spawnPlatform(x, y, type) {
     const texKey = type === 'tanker' ? this.tankerKey
@@ -241,7 +241,7 @@ class GameScene extends Phaser.Scene {
     if (type === 'barrels') plat.body.setSize(90 * SS, 12 * SS).setOffset(3 * SS, 2 * SS);
     if (type === 'buoy')   plat.body.setSize(40 * SS, 12 * SS).setOffset(4 * SS, 30 * SS);
     if (type === 'boat') {
-      const spd = (50 + 90 * this.difficulty()) * Phaser.Math.FloatBetween(0.8, 1.2);
+      const spd = (45 + 60 * this.difficulty()) * Phaser.Math.FloatBetween(0.8, 1.2);
       plat.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
     }
     return plat;
@@ -249,7 +249,7 @@ class GameScene extends Phaser.Scene {
 
   spawnNext() {
     const d = this.difficulty();
-    const gap = Phaser.Math.Between(75, 115 + Math.floor(85 * d));
+    const gap = Phaser.Math.Between(75, 115 + Math.floor(60 * d));
     this.nextPlatformY -= gap;
     const y = this.nextPlatformY;
     const x = Phaser.Math.Between(70, this.W - 70);
@@ -288,15 +288,15 @@ class GameScene extends Phaser.Scene {
       this.spawnItem(x, y - 55, 'coin');
     }
 
-    if (this.maxMeters > 500 && Math.random() < 0.02 + 0.10 * d) {
+    if (this.maxMeters > 500 && Math.random() < 0.02 + 0.06 * d) {
       const drone = this.drones.create(
         Phaser.Math.Between(60, this.W - 60), y - gap / 2, 'drone');
       drone.setScale(window.TEX_SCALE).setDepth(6);
-      const spd = 60 + 130 * d;
+      const spd = 55 + 85 * d;
       drone.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
     }
 
-    if (this.maxMeters > 1000 && Math.random() < 0.02 + 0.06 * d) {
+    if (this.maxMeters > 1000 && Math.random() < 0.015 + 0.04 * d) {
       this.scheduleMissile();
     }
   }

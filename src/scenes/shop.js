@@ -28,13 +28,13 @@ class ShopScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
 
     // tabs
-    this.tab = 'FLEET';
+    this.tab = 'SKINS';
     this.tabButtons = {};
-    ['FLEET', 'MAPS', 'POWER'].forEach((name, i) => {
+    ['SKINS', 'FLEET', 'MAPS', 'POWER'].forEach((name, i) => {
       this.tabButtons[name] = uiButton(
-        this, W / 2 + (i - 1) * 140, 110, 128, 44, name,
+        this, W / 2 + (i - 1.5) * 114, 110, 106, 42, name,
         () => { this.tab = name; this.refresh(); },
-        { color: 0x2b3a5e, size: 18 }
+        { color: 0x2b3a5e, size: 15 }
       );
     });
 
@@ -55,7 +55,16 @@ class ShopScene extends Phaser.Scene {
     if (this.rows) this.rows.destroy(true);
     this.rows = this.add.container(0, 0);
 
-    if (this.tab === 'FLEET') {
+    if (this.tab === 'SKINS') {
+      this.itemRows(CATALOG.SKINS, save.skins, save.skin,
+        (key) => {
+          const src = this.textures.get(`skin-${key}-idle`).getSourceImage();
+          return this.add.image(0, 0, `skin-${key}-idle`).setScale(78 / src.height);
+        },
+        (key) => { save.skin = key; },
+        (key) => { save.skins.push(key); save.skin = key; },
+        'equipped');
+    } else if (this.tab === 'FLEET') {
       this.itemRows(CATALOG.SHIPS, save.ships, save.ship,
         (key) => this.add.image(0, 0, 'tanker-' + key).setScale(0.55 * window.TEX_SCALE),
         (key) => { save.ship = key; },
@@ -81,7 +90,7 @@ class ShopScene extends Phaser.Scene {
     return y;
   }
 
-  itemRows(catalog, owned, active, makeIcon, select, buy) {
+  itemRows(catalog, owned, active, makeIcon, select, buy, activeLabel = 'sailing now') {
     const save = window.SAVE.data;
     Object.entries(catalog).forEach(([key, item], i) => {
       const y = this.rowPanel(i);
@@ -93,7 +102,7 @@ class ShopScene extends Phaser.Scene {
       }));
       const isOwned = owned.includes(key);
       const isActive = key === active;
-      let sub = isActive ? 'sailing now' : isOwned ? 'owned' : `price: ${item.price}`;
+      let sub = isActive ? activeLabel : isOwned ? 'owned' : `price: ${item.price}`;
       this.rows.add(this.add.text(150, y + 56, sub, {
         fontFamily: 'Arial', fontSize: '14px', color: '#c9a97f',
       }));
