@@ -29,9 +29,14 @@ const config = {
   width: 480 * SS,
   height: 800 * SS,
   backgroundColor: '#26224e',
+  // subpixel rendering: rounding positions to whole pixels makes fast vertical
+  // motion (jumps, jet flight) visibly step/jitter under the 2x camera zoom
+  render: { roundPixels: false },
   physics: {
     default: 'arcade',
-    arcade: { gravity: { y: 1150 }, debug: false },
+    // step physics with the render frame (not a fixed 60Hz tick) so motion is
+    // perfectly smooth on 120/144Hz displays instead of juddering
+    arcade: { gravity: { y: 650 }, debug: false, fixedStep: false },
   },
   scale: {
     mode: Phaser.Scale.FIT,

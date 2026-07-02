@@ -36,6 +36,8 @@ class GameScene extends Phaser.Scene {
     this.dead = false;
     this.gameOver = false;
     this.paused = false;
+    this.counting = false;
+    this.pendingMissiles = 0;
     this.flying = false;
     this.flyUntil = 0;
     this.shieldUntil = 0;
@@ -48,7 +50,7 @@ class GameScene extends Phaser.Scene {
     this.consecutiveBarrels = 0;
 
     // upgrade-scaled powerup durations
-    this.jetDur = 2300 + 500 * save.up.jet;
+    this.jetDur = 2800 + 500 * save.up.jet;
     this.domeDur = 7000 + 1800 * save.up.dome;
     this.magDur = 6000 + 1500 * save.up.magnet;
 
@@ -87,7 +89,7 @@ class GameScene extends Phaser.Scene {
     const bw = 42 / this.pScale, bh = 74 / this.pScale;
     this.player.body.setSize(bw, bh)
       .setOffset((src.width - bw) / 2, src.height - bh);
-    this.player.setVelocityY(-400);
+    this.player.setVelocityY(-260);
 
     this.spawnPlatform(W / 2, this.baseY, 'tanker');
     this.nextPlatformY = this.baseY - 100;
@@ -95,8 +97,9 @@ class GameScene extends Phaser.Scene {
 
     // --- particles ---
     this.jetFlame = this.add.particles(0, 0, 'flame', {
-      speed: { min: 120, max: 220 }, angle: { min: 80, max: 100 },
-      scale: { start: 1.4 * TS, end: 0 }, lifespan: 380, quantity: 2,
+      speed: { min: 200, max: 360 }, angle: { min: 74, max: 106 },
+      scale: { start: 2.2 * TS, end: 0 }, lifespan: 460, quantity: 4,
+      frequency: 14, tint: [0xfff3b0, 0xffc24a, 0xff6a2a],
       emitting: false,
     }).setDepth(9);
     this.jetFlame.startFollow(this.player, 0, 42);
@@ -127,7 +130,11 @@ class GameScene extends Phaser.Scene {
     // --- input ---
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D');
-    this.input.keyboard.on('keydown-P', () => this.togglePause());
+    this.input.keyboard.on('keydown-P', () => {
+      if (this.counting) return;
+      if (this.paused) this.continueCountdown();
+      else this.pauseGame();
+    });
 
     this.buildHud();
 
@@ -184,45 +191,98 @@ class GameScene extends Phaser.Scene {
       window.SAVE.save();
       t.setText(this.saveData.muted ? '🔇' : '🔊');
     });
-    mkCircle(this.W - 76, '⏸', () => this.togglePause());
+    mkCircle(this.W - 76, '⏸', () => this.pauseGame());
 
-    // pause overlay (hidden)
-    this.pauseOverlay = this.add.container(0, 0).setDepth(40).setVisible(false);
-    const dim = this.add.rectangle(this.W / 2, this.H / 2, this.W, this.H, 0x090b18, 0.6)
-      .setScrollFactor(0).setInteractive();
-    dim.on('pointerdown', () => this.togglePause());
-    this.pauseOverlay.add(dim);
-    this.pauseOverlay.add(this.add.text(this.W / 2, this.H / 2 - 20, 'PAUSED', {
+    // pause overlay (hidden) — dim + title + CONTINUE / EXIT buttons, all
+    // fixed to the screen and toggled together via setPauseUI()
+    const dim = this.add.rectangle(this.W / 2, this.H / 2, this.W, this.H, 0x090b18, 0.72)
+      .setScrollFactor(0).setDepth(40).setInteractive(); // swallow stray taps
+    const title = this.add.text(this.W / 2, this.H / 2 - 96, 'PAUSED', {
       fontFamily: FONT, fontSize: '48px', color: '#f5c542',
       stroke: '#71301f', strokeThickness: 8,
-    }).setOrigin(0.5).setScrollFactor(0));
-    this.pauseOverlay.add(this.add.text(this.W / 2, this.H / 2 + 34, 'tap or press P to resume', {
-      fontFamily: 'Arial', fontSize: '16px', color: '#ffd9a8',
-    }).setOrigin(0.5).setScrollFactor(0));
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
+    const contBtn = uiButton(this, this.W / 2, this.H / 2 - 12, 250, 58, 'CONTINUE',
+      () => this.continueCountdown(), { color: 0x2e7d32, size: 24 })
+      .setScrollFactor(0).setDepth(41);
+    const exitBtn = uiButton(this, this.W / 2, this.H / 2 + 66, 250, 58, 'EXIT GAME',
+      () => this.exitGame(), { color: 0xc9312b, size: 24 })
+      .setScrollFactor(0).setDepth(41);
+    const hint = this.add.text(this.W / 2, this.H / 2 + 118, 'exit ends the run', {
+      fontFamily: 'Arial', fontSize: '13px', color: '#ffd9a8',
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
+    this.pauseUI = [dim, title, contBtn, exitBtn, hint];
+    this.setPauseUI(false);
   }
 
-  togglePause() {
+  setPauseUI(v) {
+    this.pauseUI.forEach(o => o.setVisible(v));
+  }
+
+  pauseGame() {
+    if (this.gameOver || this.paused) return;
+    this.paused = true;
+    this.pausedAt = this.time.now;
+    this.physics.world.pause();
+    this.jetFlame.stop();
+    this.setPauseUI(true);
+  }
+
+  // CONTINUE: hide the menu, run a 3-2-1 countdown, then resume play
+  continueCountdown() {
+    if (this.gameOver || this.counting) return;
+    this.counting = true;
+    this.setPauseUI(false);
+    const label = this.add.text(this.W / 2, this.H / 2, '3', {
+      fontFamily: FONT, fontSize: '120px', color: '#f5c542',
+      stroke: '#71301f', strokeThickness: 12,
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
+    let n = 3;
+    const tick = () => {
+      if (n === 0) {
+        label.destroy();
+        this.counting = false;
+        this.resumeGame();
+        return;
+      }
+      label.setText(`${n}`).setScale(0.4).setAlpha(1);
+      this.tweens.add({ targets: label, scale: 1, duration: 320, ease: 'Back.out' });
+      this.tweens.add({ targets: label, alpha: 0.15, duration: 900, delay: 100 });
+      window.SFX.click();
+      n--;
+      this.time.delayedCall(1000, tick);
+    };
+    tick();
+  }
+
+  resumeGame() {
+    // credit all paused time (menu + countdown) back to the active powerups
+    const shift = this.time.now - this.pausedAt;
+    this.flyUntil += shift;
+    this.shieldUntil += shift;
+    this.magnetUntil += shift;
+    this.physics.world.resume();
+    if (this.flying) this.jetFlame.start();
+    this.paused = false;
+  }
+
+  // EXIT GAME: kill the player instantly and drop straight to the score screen
+  exitGame() {
     if (this.gameOver) return;
-    this.paused = !this.paused;
-    if (this.paused) {
-      this.pausedAt = this.time.now;
-      this.physics.world.pause();
-      this.jetFlame.stop();
-      this.pauseOverlay.setVisible(true);
-    } else {
-      const shift = this.time.now - this.pausedAt;
-      this.flyUntil += shift;
-      this.shieldUntil += shift;
-      this.magnetUntil += shift;
-      this.physics.world.resume();
-      if (this.flying) this.jetFlame.start();
-      this.pauseOverlay.setVisible(false);
-    }
+    this.paused = false;
+    this.setPauseUI(false);
+    this.physics.world.resume();
+    this.die();
+    this.endGame();
   }
 
   // ---------- spawning ----------
 
   difficulty() { return Phaser.Math.Clamp(this.maxMeters / 2600, 0, 1); }
+
+  // overall tempo creeps up as you climb so the run never gets stale. Jump
+  // heights stay identical (bounce scales ×pace, gravity ×pace²) — only the
+  // pacing quickens, and only barely (up to ~15% at full difficulty).
+  pace() { return 1 + 0.15 * this.difficulty(); }
 
   spawnPlatform(x, y, type) {
     const texKey = type === 'tanker' ? this.tankerKey
@@ -249,7 +309,9 @@ class GameScene extends Phaser.Scene {
 
   spawnNext() {
     const d = this.difficulty();
-    const gap = Phaser.Math.Between(75, 115 + Math.floor(60 * d));
+    // keep the largest gap comfortably under the jump height (~162px) so the
+    // player can always reach the next platform — never stranded with no room
+    const gap = Phaser.Math.Between(80, 100 + Math.floor(20 * d));
     this.nextPlatformY -= gap;
     const y = this.nextPlatformY;
     const x = Phaser.Math.Between(70, this.W - 70);
@@ -288,7 +350,8 @@ class GameScene extends Phaser.Scene {
       this.spawnItem(x, y - 55, 'coin');
     }
 
-    if (this.maxMeters > 500 && Math.random() < 0.02 + 0.06 * d) {
+    if (this.maxMeters > 500 && this.drones.countActive() < 2
+        && Math.random() < 0.02 + 0.06 * d) {
       const drone = this.drones.create(
         Phaser.Math.Between(60, this.W - 60), y - gap / 2, 'drone');
       drone.setScale(window.TEX_SCALE).setDepth(6);
@@ -296,13 +359,18 @@ class GameScene extends Phaser.Scene {
       drone.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
     }
 
+    // missiles: one at a time to start, up to two together later in the run
     if (this.maxMeters > 1000 && Math.random() < 0.015 + 0.04 * d) {
-      this.scheduleMissile();
+      const cap = this.maxMeters > 2000 ? 2 : 1;
+      if (this.missiles.countActive() + this.pendingMissiles < cap) {
+        this.scheduleMissile();
+      }
     }
   }
 
   scheduleMissile() {
     const TS = window.TEX_SCALE;
+    this.pendingMissiles++; // counts toward the cap during the warning phase
     // each missile gets its own launch column and indicator; travels straight up
     const x = Phaser.Math.Between(50, this.W - 50);
     const iy = this.H - 92;
@@ -318,6 +386,7 @@ class GameScene extends Phaser.Scene {
       targets: warn, scale: TS * 1.7, duration: 380, yoyo: true, repeat: -1,
     });
     this.time.delayedCall(190 * 2 * 4, () => {
+      this.pendingMissiles = Math.max(0, this.pendingMissiles - 1);
       warn.destroy();
       if (this.gameOver) return;
       const m = this.missiles.create(
@@ -342,7 +411,7 @@ class GameScene extends Phaser.Scene {
   // ---------- gameplay events ----------
 
   onLand(plat) {
-    this.player.setVelocityY(-800);
+    this.player.setVelocityY(-560 * this.pace());
     window.SFX.jump();
     this.squash();
     if (plat.type === 'barrels') {
@@ -355,7 +424,7 @@ class GameScene extends Phaser.Scene {
   }
 
   onSpring(s) {
-    this.player.setVelocityY(-1250);
+    this.player.setVelocityY(-680 * this.pace());
     window.SFX.spring();
     this.squash();
     this.tweens.add({ targets: s, scaleY: 0.5 * window.TEX_SCALE, duration: 90, yoyo: true });
@@ -363,14 +432,33 @@ class GameScene extends Phaser.Scene {
   }
 
   squash() {
-    // subtle squash-and-stretch; kill any in-flight scale tween so rapid
-    // jumps don't stack and make the sprite jitter
+    // subtle launch stretch: a quick, gentle vertical stretch on takeoff that
+    // eases back to normal — reads as a jump without wobbling in place
     this.tweens.killTweensOf(this.player);
-    this.player.setScale(this.pScale * 1.07, this.pScale * 0.93);
+    this.player.setScale(this.pScale * 0.96, this.pScale * 1.06);
     this.tweens.add({
       targets: this.player,
-      scaleX: this.pScale, scaleY: this.pScale, duration: 140, ease: 'Quad.out',
+      scaleX: this.pScale, scaleY: this.pScale, duration: 160, ease: 'Quad.out',
     });
+  }
+
+  // jet takeoff: powerful ignition — spark burst, camera kick, launch stretch
+  startBoost() {
+    this.flying = true;
+    this.flyUntil = this.time.now + this.jetDur;
+    this.player.setTexture(this.skin.fly);
+    this.jetFlame.start();
+    this.burst.explode(32, this.player.x, this.player.y + 24);
+    this.cameras.main.shake(140, 0.003);
+    this.tweens.killTweensOf(this.player);
+    this.player.setScale(this.pScale * 0.86, this.pScale * 1.2);
+    this.tweens.add({
+      targets: this.player, scaleX: this.pScale, scaleY: this.pScale,
+      duration: 280, ease: 'Back.out',
+    });
+    window.SFX.power();
+    window.VOICE.play(this, 'power');
+    this.quote('cap', 1);
   }
 
   collect(item) {
@@ -384,13 +472,7 @@ class GameScene extends Phaser.Scene {
       this.coinText.setText(`${this.coinCount}`);
       if (this.coinCount % 10 === 0) this.quote('coins', 1);
     } else if (t === 'cap') {
-      this.flying = true;
-      this.flyUntil = this.time.now + this.jetDur;
-      this.player.setTexture(this.skin.fly);
-      this.jetFlame.start();
-      window.SFX.power();
-      window.VOICE.play(this, 'power');
-      this.quote('cap', 1);
+      this.startBoost();
     } else if (t === 'shield') {
       this.shieldUntil = this.time.now + this.domeDur;
       this.aura.setVisible(true);
@@ -426,14 +508,14 @@ class GameScene extends Phaser.Scene {
       this.coinCount += 5;
       this.coinText.setText(`${this.coinCount}`);
       this.quote(kind, 1);
-      this.cameras.main.shake(120, 0.008);
+      this.cameras.main.shake(110, 0.003);
     } else if (this.time.now < this.shieldUntil) {
       // shield absorbs a single hit, then shatters
       this.burst.explode(24, obj.x, obj.y);
       obj.destroy();
       window.SFX.zap();
       this.quote(kind, 1);
-      this.cameras.main.shake(120, 0.008);
+      this.cameras.main.shake(110, 0.003);
       this.breakShield();
     } else {
       this.die();
@@ -449,7 +531,7 @@ class GameScene extends Phaser.Scene {
       targets: drone, y: drone.y + 220, angle: 180, alpha: 0, duration: 650,
       onComplete: () => drone.destroy(),
     });
-    this.player.setVelocityY(-780);
+    this.player.setVelocityY(-470 * this.pace());
     this.squash();
     this.coinCount += 2;
     this.coinText.setText(`${this.coinCount}`);
@@ -468,10 +550,9 @@ class GameScene extends Phaser.Scene {
     window.SFX.hit();
     if (this.skin.hit) this.player.setTexture(this.skin.hit);
     else this.player.setTint(0xff7766);
-    this.player.setVelocity(Phaser.Math.Between(-120, 120), -300);
+    this.player.setVelocity(Phaser.Math.Between(-120, 120), -225);
     this.player.body.setAngularVelocity(400);
     this.player.body.checkCollision.none = true;
-    this.cameras.main.shake(180, 0.007);
   }
 
   quote(kind, chance) {
@@ -573,6 +654,8 @@ class GameScene extends Phaser.Scene {
     if (this.gameOver || this.paused) return;
     const p = this.player;
     const cam = this.cameras.main;
+    // tempo ramp: gravity ×pace² keeps jump heights constant while quickening
+    this.physics.world.gravity.y = 650 * this.pace() ** 2;
 
     if (!this.dead) {
       let dir = 0;
@@ -590,7 +673,10 @@ class GameScene extends Phaser.Scene {
 
     if (this.flying) {
       if (time < this.flyUntil) {
-        p.setVelocityY(-1050);
+        // ease toward cruise speed instead of snapping, so takeoff is smooth
+        const vy = p.body.velocity.y;
+        const cruise = -850 * this.pace();
+        p.setVelocityY(vy + (cruise - vy) * Math.min(1, dt / 250));
       } else {
         this.flying = false;
         p.setTexture(this.skin.idle);
@@ -621,6 +707,10 @@ class GameScene extends Phaser.Scene {
     if (time < this.magnetUntil) bits.push(`MAGNET ${((this.magnetUntil - time) / 1000).toFixed(1)}s`);
     this.powerText.setText(bits.join('\n'));
 
+    // camera only ever climbs (with the player's highest point) and holds still
+    // otherwise — a fixed frame, not a swooping follow. One constant anchor for
+    // jumping and flying alike: the character stays put while the world scrolls
+    // past, so a jet climb reads as straight-up motion with no jump when it ends.
     const targetY = p.y - this.H * 0.42;
     if (targetY < this.camY) this.camY = targetY;
     cam.scrollY = this.camY;
