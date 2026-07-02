@@ -37,3 +37,45 @@ window.promptUsername = (current, cb) => {
   save.addEventListener('click', done);
   input.addEventListener('keydown', onKey);
 };
+
+// Custom account modal: sign-in choice when signed out, account actions when in.
+window.accountModal = () => {
+  const modal = document.getElementById('account-modal');
+  const box = document.getElementById('account-box');
+  if (!modal || !box) return;
+  const fb = window.FB;
+  const close = () => { modal.style.display = 'none'; };
+  box.innerHTML = '';
+
+  const title = (txt) => { const h = document.createElement('h3'); h.textContent = txt; box.appendChild(h); };
+  const sub = (txt) => { const p = document.createElement('p'); p.className = 'm-sub'; p.textContent = txt; box.appendChild(p); };
+  const btn = (label, cls, cb, html) => {
+    const b = document.createElement('button');
+    b.className = 'm-btn ' + (cls || '');
+    if (html) b.innerHTML = html; else b.textContent = label;
+    b.onclick = cb;
+    box.appendChild(b);
+    return b;
+  };
+
+  if (fb && fb.user) {
+    const name = (fb.profile && fb.profile.username) || 'player';
+    title('HI, ' + name.toUpperCase());
+    sub('best: ' + ((fb.profile && fb.profile.best) || 0) + ' m');
+    btn('CHANGE NAME', 'ghost', () => {
+      close();
+      window.promptUsername(name, (n) => { if (n && fb.setUsername) fb.setUsername(n); });
+    });
+    btn('SIGN OUT', 'danger', () => { close(); if (fb.signOut) fb.signOut(); });
+    btn('CLOSE', 'ghost', close);
+  } else {
+    title('PLAY');
+    sub('sign in to save your progress across devices and climb the leaderboard');
+    btn('SIGN IN WITH GOOGLE', 'google', () => {
+      close();
+      if (fb && fb.signIn) fb.signIn();
+    }, '<span class="gi">G</span> SIGN IN WITH GOOGLE');
+    btn('PLAY AS GUEST', 'ghost', close);
+  }
+  modal.style.display = 'flex';
+};

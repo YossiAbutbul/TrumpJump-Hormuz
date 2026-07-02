@@ -121,6 +121,14 @@ class MenuScene extends Phaser.Scene {
       document.removeEventListener('fb-auth', this._authHandler));
     this.onAuth();
 
+    // first-ever visit: offer sign in vs play as guest
+    if (!localStorage.getItem('tj-intro') && (!window.FB || !window.FB.user)) {
+      localStorage.setItem('tj-intro', '1');
+      this.time.delayedCall(500, () => {
+        if (window.accountModal && (!window.FB || !window.FB.user)) window.accountModal();
+      });
+    }
+
     this.input.keyboard.once('keydown-SPACE', () => this.go());
   }
 
@@ -142,23 +150,25 @@ class MenuScene extends Phaser.Scene {
     const fb = window.FB;
     const W = this.scale.width / window.SS;
     const signedIn = fb && fb.user;
-    let bg, glyph;
-    if (signedIn) {
-      const name = (fb.profile && fb.profile.username) || '';
-      bg = 0x2e7d32;
-      glyph = (name[0] || '?').toUpperCase();
-    } else {
-      bg = 0x4285f4;   // google blue
-      glyph = 'G';
-    }
     const c = this.add.container(W - 32, 33).setDepth(6);
+    const bg = signedIn ? 0x2e7d32 : 0x2b3a5e;
     const circle = this.add.circle(0, 0, 19, bg)
       .setStrokeStyle(3, 0xffffff, 0.85)
       .setInteractive({ useHandCursor: true });
-    const t = this.add.text(0, 1, glyph, {
-      fontFamily: FONT, fontSize: '18px', color: '#ffffff',
-    }).setOrigin(0.5);
-    c.add([circle, t]);
+    c.add(circle);
+    if (signedIn) {
+      const name = (fb.profile && fb.profile.username) || '';
+      c.add(this.add.text(0, 1, (name[0] || '?').toUpperCase(), {
+        fontFamily: FONT, fontSize: '18px', color: '#ffffff',
+      }).setOrigin(0.5));
+    } else {
+      // simple person silhouette
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 0.92);
+      g.fillCircle(0, -4, 5);
+      g.fillEllipse(0, 11, 17, 12);
+      c.add(g);
+    }
     circle.on('pointerover', () => c.setScale(1.1));
     circle.on('pointerout', () => c.setScale(1));
     circle.on('pointerup', () => {
@@ -169,21 +179,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   onAccountClick() {
-    const fb = window.FB;
-    if (!fb) return;
-    if (fb.user) {
-      if (!fb.profile || !fb.profile.username) {
-        this._prompting = true;
-        window.promptUsername('', (name) => {
-          this._prompting = false;
-          if (name) fb.setUsername(name);
-        });
-      } else if (window.confirm('Sign out?')) {
-        fb.signOut();
-      }
-    } else {
-      fb.signIn();
-    }
+    if (window.accountModal) window.accountModal();
   }
 
   go() {
