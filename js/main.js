@@ -35,7 +35,9 @@ const config = {
   },
   scale: {
     mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // #game parent already flex-centers the canvas; letting Phaser also center
+    // it double-applies margins and shoves it off to one side on wide screens.
+    autoCenter: Phaser.Scale.NO_CENTER,
   },
   scene: [MenuScene, ShopScene, GameScene],
 };
