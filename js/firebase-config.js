@@ -7,12 +7,13 @@
 // Until real values are pasted, the game runs fine with leaderboard disabled.
 // ---------------------------------------------------------------------------
 window.FIREBASE_CONFIG = {
-  apiKey: "PASTE_API_KEY",
-  authDomain: "PASTE_PROJECT.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID",
+  apiKey: "AIzaSyC1dWT1Jj3NTQyaHY0Pltfo5d-rEblWvrs",
+  authDomain: "trump-jump-strait-of-hormuz.firebaseapp.com",
+  projectId: "trump-jump-strait-of-hormuz",
+  storageBucket: "trump-jump-strait-of-hormuz.firebasestorage.app",
+  messagingSenderId: "393573764290",
+  appId: "1:393573764290:web:59ed71254468bef3703f5b",
+  measurementId: "G-8NWTBTEDQD",
 };
 
 // Small DOM modal for picking a leaderboard username after first sign-in.
