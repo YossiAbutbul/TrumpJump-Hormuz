@@ -54,8 +54,8 @@ class MenuScene extends Phaser.Scene {
     this.add.text(50, 32, `${save.bank}`, {
       fontFamily: FONT, fontSize: '20px', color: '#f5c542',
     }).setOrigin(0, 0.5);
-    uiPanel(this, W - 142, 12, 130, 40);
-    this.add.text(W - 77, 32, `BEST ${save.best}`, {
+    uiPanel(this, W - 202, 12, 130, 40);
+    this.add.text(W - 137, 32, `BEST ${save.best}`, {
       fontFamily: FONT, fontSize: '16px', color: '#ffe9c9',
     }).setOrigin(0.5);
 
@@ -74,11 +74,12 @@ class MenuScene extends Phaser.Scene {
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
     const trump = this.add.image(W / 2, 320, window.SKIN.idle).setScale(150 / srcH);
     this.tweens.add({
-      targets: trump, y: 292, duration: 700,
+      targets: trump, y: 310, duration: 1800,
       yoyo: true, repeat: -1, ease: 'Sine.inOut',
     });
     this.tweens.add({
-      targets: glow, alpha: 0.25, duration: 700, yoyo: true, repeat: -1,
+      targets: glow, alpha: 0.35, duration: 1800, yoyo: true, repeat: -1,
+      ease: 'Sine.inOut',
     });
 
     // powerup legend, compact
@@ -140,17 +141,31 @@ class MenuScene extends Phaser.Scene {
     if (this.acct) this.acct.destroy();
     const fb = window.FB;
     const W = this.scale.width / window.SS;
-    let label, color;
-    if (fb && fb.user) {
-      const name = (fb.profile && fb.profile.username) || '...';
-      label = name.length > 12 ? name.slice(0, 12) : name;
-      color = 0x2e7d32;
+    const signedIn = fb && fb.user;
+    let bg, glyph;
+    if (signedIn) {
+      const name = (fb.profile && fb.profile.username) || '';
+      bg = 0x2e7d32;
+      glyph = (name[0] || '?').toUpperCase();
     } else {
-      label = 'SIGN IN';
-      color = 0xc9312b;
+      bg = 0x4285f4;   // google blue
+      glyph = 'G';
     }
-    this.acct = uiButton(this, W / 2, 34, 176, 34, label,
-      () => this.onAccountClick(), { color, size: 15 });
+    const c = this.add.container(W - 32, 33).setDepth(6);
+    const circle = this.add.circle(0, 0, 19, bg)
+      .setStrokeStyle(3, 0xffffff, 0.85)
+      .setInteractive({ useHandCursor: true });
+    const t = this.add.text(0, 1, glyph, {
+      fontFamily: FONT, fontSize: '18px', color: '#ffffff',
+    }).setOrigin(0.5);
+    c.add([circle, t]);
+    circle.on('pointerover', () => c.setScale(1.1));
+    circle.on('pointerout', () => c.setScale(1));
+    circle.on('pointerup', () => {
+      if (window.SFX && window.SFX.click) window.SFX.click();
+      this.onAccountClick();
+    });
+    this.acct = c;
   }
 
   onAccountClick() {
@@ -163,7 +178,7 @@ class MenuScene extends Phaser.Scene {
           this._prompting = false;
           if (name) fb.setUsername(name);
         });
-      } else {
+      } else if (window.confirm('Sign out?')) {
         fb.signOut();
       }
     } else {
