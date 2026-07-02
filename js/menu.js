@@ -98,20 +98,77 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // buttons
-    uiButton(this, W / 2, 585, 260, 66, 'PLAY', () => this.go(), { size: 30 });
-    uiButton(this, W / 2, 660, 200, 52, 'SHOP', () => {
+    uiButton(this, W / 2, 556, 260, 60, 'PLAY', () => this.go(), { size: 28 });
+    uiButton(this, W / 2, 622, 200, 48, 'SHOP', () => {
       window.SFX.init();
       this.scene.start('Shop');
-    }, { color: 0xb8860b, size: 22 });
+    }, { color: 0xb8860b, size: 20 });
+    uiButton(this, W / 2, 682, 200, 48, 'LEADERBOARD', () => {
+      window.SFX.init();
+      this.scene.start('Leaderboard');
+    }, { color: 0x2b3a5e, size: 18 });
 
-    this.add.text(W / 2, 715, 'move: arrows / A D / touch left, right', {
-      fontFamily: 'Arial', fontSize: '14px', color: '#ffd9a8',
+    this.add.text(W / 2, 732, 'arrows / A D / touch  •  P: pause', {
+      fontFamily: 'Arial', fontSize: '13px', color: '#ffd9a8',
     }).setOrigin(0.5);
-    this.add.text(W / 2, 738, 'P: pause', {
-      fontFamily: 'Arial', fontSize: '13px', color: '#c9a97f',
-    }).setOrigin(0.5);
+
+    // account chip (top center) + live auth updates
+    this.updateAccountChip();
+    this._authHandler = () => this.onAuth();
+    document.addEventListener('fb-auth', this._authHandler);
+    this.events.once('shutdown', () =>
+      document.removeEventListener('fb-auth', this._authHandler));
+    this.onAuth();
 
     this.input.keyboard.once('keydown-SPACE', () => this.go());
+  }
+
+  onAuth() {
+    const fb = window.FB;
+    // prompt for a leaderboard name on first sign-in
+    if (fb && fb.user && (!fb.profile || !fb.profile.username) && !this._prompting) {
+      this._prompting = true;
+      window.promptUsername('', (name) => {
+        this._prompting = false;
+        if (name) fb.setUsername(name);
+      });
+    }
+    this.updateAccountChip();
+  }
+
+  updateAccountChip() {
+    if (this.acct) this.acct.destroy();
+    const fb = window.FB;
+    const W = this.scale.width / window.SS;
+    let label, color;
+    if (fb && fb.user) {
+      const name = (fb.profile && fb.profile.username) || '...';
+      label = name.length > 12 ? name.slice(0, 12) : name;
+      color = 0x2e7d32;
+    } else {
+      label = 'SIGN IN';
+      color = 0xc9312b;
+    }
+    this.acct = uiButton(this, W / 2, 34, 176, 34, label,
+      () => this.onAccountClick(), { color, size: 15 });
+  }
+
+  onAccountClick() {
+    const fb = window.FB;
+    if (!fb) return;
+    if (fb.user) {
+      if (!fb.profile || !fb.profile.username) {
+        this._prompting = true;
+        window.promptUsername('', (name) => {
+          this._prompting = false;
+          if (name) fb.setUsername(name);
+        });
+      } else {
+        fb.signOut();
+      }
+    } else {
+      fb.signIn();
+    }
   }
 
   go() {

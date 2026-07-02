@@ -28,18 +28,72 @@
     box-shadow: 0 0 80px rgba(246, 198, 103, 0.18), 0 10px 40px rgba(0, 0, 0, 0.6);
     touch-action: none;
   }
+  #name-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 7, 15, 0.7);
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+  #name-modal .box {
+    background: #16203f;
+    border: 2px solid #f5c542;
+    border-radius: 14px;
+    padding: 22px 24px;
+    width: 280px;
+    max-width: 80vw;
+    text-align: center;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
+    font-family: "Luckiest Guy", Arial, sans-serif;
+  }
+  #name-modal h3 { color: #f5c542; margin: 0 0 14px; letter-spacing: 1px; }
+  #name-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 2px solid #f5c542;
+    background: #0a0e22;
+    color: #fff;
+    font-size: 18px;
+    outline: none;
+  }
+  #name-save {
+    margin-top: 14px;
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 10px;
+    background: #c9312b;
+    color: #fff;
+    font-size: 18px;
+    font-family: "Luckiest Guy", Arial, sans-serif;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
 <div id="game"></div>
+<div id="name-modal">
+  <div class="box">
+    <h3>PICK A NAME</h3>
+    <input id="name-input" maxlength="16" placeholder="your name" autocomplete="off">
+    <button id="name-save">SAVE</button>
+  </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="js/firebase-config.js"></script>
 <script src="js/save.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/voice.js"></script>
 <script src="js/textures.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/shop.js"></script>
+<script src="js/leaderboard.js"></script>
 <script src="js/game.js"></script>
 <script src="js/main.js"></script>
+<script type="module" src="js/firebase.js"></script>
 </body>
 </html>

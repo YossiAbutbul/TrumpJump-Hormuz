@@ -520,6 +520,7 @@ class GameScene extends Phaser.Scene {
     const isBest = score > save.best;
     if (isBest) save.best = score;
     window.SAVE.save();
+    if (window.FB && window.FB.user) window.FB.submitScore(score);
 
     const W = this.W, H = this.H;
     this.add.rectangle(W / 2, H / 2, W, H, 0x090b18, 0.7)

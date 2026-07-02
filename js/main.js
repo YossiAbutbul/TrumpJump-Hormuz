@@ -39,7 +39,7 @@ const config = {
     // it double-applies margins and shoves it off to one side on wide screens.
     autoCenter: Phaser.Scale.NO_CENTER,
   },
-  scene: [MenuScene, ShopScene, GameScene],
+  scene: [MenuScene, ShopScene, GameScene, LeaderboardScene],
 };
 
 // wait for the arcade font so Phaser does not cache fallback glyphs
