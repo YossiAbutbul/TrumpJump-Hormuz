@@ -22,6 +22,18 @@ window.CATALOG = {
       sea: ['#3f5d5e', '#1c2f30'],
       sun: 'sun', stars: false, cloudTint: 0xa8956f,
     },
+    dawn: {
+      name: 'DAWN PATROL', price: 650,
+      sky: ['#1a1436', '#4a3a6a', '#c96a8a', '#f4b48c'],
+      sea: ['#3a6f95', '#123040'],
+      sun: 'sun', stars: false, cloudTint: 0xffe0e8,
+    },
+    arctic: {
+      name: 'ARCTIC FRONT', price: 850,
+      sky: ['#08131f', '#1c3a52', '#3a6f92', '#8ac4dc'],
+      sea: ['#2a7a9e', '#0c3a52'],
+      sun: 'moon', stars: true, cloudTint: 0xd4ecfa,
+    },
   },
   SHIPS: {
     classic: {
@@ -35,6 +47,14 @@ window.CATALOG = {
     stealth: {
       name: 'STEALTH FLEET', price: 550,
       hull: '#2e3440', hullDark: '#1c2128', boat: '#4c566a', stripe: '#222831',
+    },
+    navy: {
+      name: 'NAVY FLEET', price: 700,
+      hull: '#2a4a7a', hullDark: '#1a3050', boat: '#dce6f0', stripe: '#c93a35',
+    },
+    crimson: {
+      name: 'CRIMSON FLEET', price: 950,
+      hull: '#7a1a2a', hullDark: '#500f1c', boat: '#f0d2d2', stripe: '#f5c542',
     },
   },
   UPGRADES: {

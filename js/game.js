@@ -404,7 +404,19 @@ class GameScene extends Phaser.Scene {
 
   onHazard(obj, kind) {
     if (this.dead || !obj.active) return;
-    if (this.flying || this.time.now < this.shieldUntil) {
+    const p = this.player;
+
+    // stomp a drone from above: kill it, bounce off, survive.
+    // side/bottom hits (not falling, or not clearly above) still kill.
+    if (kind === 'drone' && !obj.stomped && !this.flying
+        && this.time.now >= this.shieldUntil
+        && p.body.velocity.y > 0 && p.y < obj.y - 4) {
+      this.stompDrone(obj);
+      return;
+    }
+
+    if (this.flying) {
+      // jet flight smashes through everything for coins
       this.burst.explode(24, obj.x, obj.y);
       obj.destroy();
       window.SFX.zap();
@@ -412,9 +424,39 @@ class GameScene extends Phaser.Scene {
       this.coinText.setText(`${this.coinCount}`);
       this.quote(kind, 1);
       this.cameras.main.shake(120, 0.008);
+    } else if (this.time.now < this.shieldUntil) {
+      // shield absorbs a single hit, then shatters
+      this.burst.explode(24, obj.x, obj.y);
+      obj.destroy();
+      window.SFX.zap();
+      this.quote(kind, 1);
+      this.cameras.main.shake(120, 0.008);
+      this.breakShield();
     } else {
       this.die();
     }
+  }
+
+  stompDrone(drone) {
+    drone.stomped = true;
+    drone.body.enable = false;
+    this.burst.explode(14, drone.x, drone.y);
+    window.SFX.zap();
+    this.tweens.add({
+      targets: drone, y: drone.y + 220, angle: 180, alpha: 0, duration: 650,
+      onComplete: () => drone.destroy(),
+    });
+    this.player.setVelocityY(-780);
+    this.squash();
+    this.coinCount += 2;
+    this.coinText.setText(`${this.coinCount}`);
+    this.quote('drone', 1);
+  }
+
+  breakShield() {
+    this.shieldUntil = 0;
+    this.aura.setVisible(false);
+    window.SFX.shield();
   }
 
   die() {
@@ -604,7 +646,7 @@ class GameScene extends Phaser.Scene {
       if (pl.body.velocity.x !== 0) pl.setFlipX(pl.body.velocity.x < 0);
     });
     this.drones.children.iterate(d => {
-      if (!d) return;
+      if (!d || d.stomped) return;
       if (d.x < 40 && d.body.velocity.x < 0) d.body.velocity.x *= -1;
       if (d.x > this.W - 40 && d.body.velocity.x > 0) d.body.velocity.x *= -1;
       d.y += Math.sin(time / 300 + d.x) * 0.4;
