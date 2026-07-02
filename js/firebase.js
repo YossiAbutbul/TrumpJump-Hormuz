@@ -29,6 +29,7 @@ if (!configured) {
     signOut() {},
     setUsername() { return Promise.resolve(); },
     submitScore() { return Promise.resolve(); },
+    saveCloud() { return Promise.resolve(); },
     topScores() { return Promise.resolve([]); },
   };
   setTimeout(emit, 0);
@@ -45,9 +46,30 @@ if (!configured) {
     } catch (e) { console.warn('profile load failed', e); return null; }
   };
 
+  // write the local save blob up to the user's Firestore doc
+  const pushSave = async () => {
+    if (!state.user || !window.SAVE) return;
+    const blob = window.SAVE.cloudBlob();
+    try {
+      await setDoc(doc(db, 'users', state.user.uid), {
+        ...blob, email: state.user.email, updatedAt: serverTimestamp(),
+      }, { merge: true });
+      state.profile = { ...(state.profile || {}), ...blob };
+    } catch (e) { console.warn('save push failed', e); }
+  };
+
   onAuthStateChanged(auth, async (u) => {
     state.user = u ? { uid: u.uid, email: u.email, photo: u.photoURL } : null;
-    state.profile = u ? await loadProfile(u.uid) : null;
+    if (u) {
+      state.profile = await loadProfile(u.uid);
+      // merge cloud <-> local (best of each), then push the merged result up
+      if (window.SAVE && window.SAVE.mergeCloud) {
+        window.SAVE.mergeCloud(state.profile);
+        await pushSave();
+      }
+    } else {
+      state.profile = null;
+    }
     emit();
   });
 
@@ -72,6 +94,8 @@ if (!configured) {
       state.profile = { ...(state.profile || {}), username: name };
       emit();
     },
+
+    saveCloud() { return pushSave(); },
 
     async submitScore(score) {
       if (!state.user) return;
