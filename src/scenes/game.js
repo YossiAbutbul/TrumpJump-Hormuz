@@ -78,7 +78,7 @@ class GameScene extends Phaser.Scene {
     this.missiles = this.physics.add.group({ allowGravity: false, immovable: true });
 
     // --- player ---
-    this.skin = window.SKIN || { idle: 'trump', fly: 'trump-fly', hit: null };
+    this.skin = window.SKIN || { idle: 'skin-trump-idle', fly: 'skin-trump-fly', hit: null };
     this.player = this.physics.add.sprite(W / 2, this.baseY - 60, this.skin.idle);
     this.player.setDepth(10);
     const src = this.textures.get(this.skin.idle).getSourceImage();
@@ -654,14 +654,17 @@ class GameScene extends Phaser.Scene {
     });
 
     while (this.nextPlatformY > cam.scrollY - 250) this.spawnNext();
-    const cull = cam.scrollY + this.H + 120;
+    // cull at the screen bottom: nothing landable may live below the visible
+    // area, or the player can bounce on an offscreen platform and never fall
+    // to their death (softlock at the bottom of the screen).
+    const cull = cam.scrollY + this.H;
     [this.platforms, this.springs, this.items, this.drones].forEach(g =>
       g.children.iterate(o => { if (o && o.y > cull) o.destroy(); }));
     this.missiles.children.iterate(m => {
       if (m && m.y < cam.scrollY - 200) m.destroy();
     });
 
-    if (p.y > cam.scrollY + this.H + 80) {
+    if (p.y > cam.scrollY + this.H + 40) {
       if (!this.dead) this.dead = true;
       this.endGame();
     }

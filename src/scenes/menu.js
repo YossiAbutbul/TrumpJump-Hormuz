@@ -18,16 +18,14 @@ class MenuScene extends Phaser.Scene {
     buildShipTextures(this, save.ship);
     window.VOICE.init(this);
 
-    // resolve the equipped skin's textures, falling back to procedural trump art
-    const id = save.skin || 'trump';
-    const idleKey = `skin-${id}-idle`;
-    window.SKIN = this.textures.exists(idleKey)
-      ? {
-          idle: idleKey,
-          fly: this.textures.exists(`skin-${id}-fly`) ? `skin-${id}-fly` : idleKey,
-          hit: this.textures.exists(`skin-${id}-hit`) ? `skin-${id}-hit` : null,
-        }
-      : { idle: 'trump', fly: 'trump-fly', hit: null };
+    // resolve the equipped skin's textures; fall back to the default trump skin
+    // if the saved id is unknown (e.g. removed from the catalog)
+    const id = this.textures.exists(`skin-${save.skin}-idle`) ? save.skin : 'trump';
+    window.SKIN = {
+      idle: `skin-${id}-idle`,
+      fly: this.textures.exists(`skin-${id}-fly`) ? `skin-${id}-fly` : `skin-${id}-idle`,
+      hit: this.textures.exists(`skin-${id}-hit`) ? `skin-${id}-hit` : null,
+    };
     const SS = window.SS, TS = window.TEX_SCALE;
     window.setupCamera(this);
     const W = this.scale.width / SS, H = this.scale.height / SS;
