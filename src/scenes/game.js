@@ -363,10 +363,13 @@ class GameScene extends Phaser.Scene {
   }
 
   squash() {
-    this.player.setScale(this.pScale * 1.15, this.pScale * 0.85);
+    // subtle squash-and-stretch; kill any in-flight scale tween so rapid
+    // jumps don't stack and make the sprite jitter
+    this.tweens.killTweensOf(this.player);
+    this.player.setScale(this.pScale * 1.07, this.pScale * 0.93);
     this.tweens.add({
       targets: this.player,
-      scaleX: this.pScale, scaleY: this.pScale, duration: 180,
+      scaleX: this.pScale, scaleY: this.pScale, duration: 140, ease: 'Quad.out',
     });
   }
 
