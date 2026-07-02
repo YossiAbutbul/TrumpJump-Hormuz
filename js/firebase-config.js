@@ -47,6 +47,13 @@ window.accountModal = () => {
   const close = () => { modal.style.display = 'none'; };
   box.innerHTML = '';
 
+  const x = document.createElement('button');
+  x.className = 'm-close';
+  x.innerHTML = '&times;';
+  x.setAttribute('aria-label', 'Close');
+  x.onclick = close;
+  box.appendChild(x);
+
   const title = (txt) => { const h = document.createElement('h3'); h.textContent = txt; box.appendChild(h); };
   const sub = (txt) => { const p = document.createElement('p'); p.className = 'm-sub'; p.textContent = txt; box.appendChild(p); };
   const btn = (label, cls, cb, html) => {

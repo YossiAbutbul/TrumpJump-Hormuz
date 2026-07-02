@@ -82,6 +82,7 @@
     z-index: 50;
   }
   #account-modal .box {
+    position: relative;
     background: #16203f;
     border: 2px solid #f5c542;
     border-radius: 14px;
@@ -92,6 +93,20 @@
     box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
     font-family: "Luckiest Guy", Arial, sans-serif;
   }
+  #account-modal .m-close {
+    position: absolute;
+    top: 6px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #ffd9a8;
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: Arial, sans-serif;
+    padding: 2px 4px;
+  }
+  #account-modal .m-close:hover { color: #fff; }
   #account-modal h3 { color: #f5c542; margin: 0 0 8px; letter-spacing: 1px; }
   #account-modal .m-sub {
     color: #ffd9a8; font-family: Arial, sans-serif; font-size: 13px; margin: 0 0 16px;
