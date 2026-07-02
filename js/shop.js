@@ -6,10 +6,13 @@ class ShopScene extends Phaser.Scene {
     Object.keys(CATALOG.SHIPS).forEach(k => buildShipTextures(this, k));
     Object.keys(CATALOG.MAPS).forEach(k => buildMapTextures(this, k));
 
-    const W = this.scale.width, H = this.scale.height;
+    const SS = window.SS, TS = window.TEX_SCALE;
+    window.setupCamera(this);
+    const W = this.scale.width / SS, H = this.scale.height / SS;
+    this.W = W; this.H = H;
     const save = window.SAVE.data;
 
-    this.add.image(W / 2, H / 2, 'sky-' + save.map);
+    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS);
     this.add.rectangle(W / 2, H / 2, W, H, 0x090b18, 0.55);
 
     this.add.text(W / 2, 46, 'SHOP', {
@@ -19,7 +22,7 @@ class ShopScene extends Phaser.Scene {
 
     // bank pill
     uiPanel(this, W - 152, 20, 132, 44);
-    this.add.image(W - 130, 42, 'coin');
+    this.add.image(W - 130, 42, 'coin').setScale(TS);
     this.bankText = this.add.text(W - 112, 42, `${save.bank}`, {
       fontFamily: FONT, fontSize: '22px', color: '#f5c542',
     }).setOrigin(0, 0.5);
@@ -54,7 +57,7 @@ class ShopScene extends Phaser.Scene {
 
     if (this.tab === 'FLEET') {
       this.itemRows(CATALOG.SHIPS, save.ships, save.ship,
-        (key) => this.add.image(0, 0, 'tanker-' + key).setScale(0.55),
+        (key) => this.add.image(0, 0, 'tanker-' + key).setScale(0.55 * window.TEX_SCALE),
         (key) => { save.ship = key; },
         (key) => { save.ships.push(key); save.ship = key; });
     } else if (this.tab === 'MAPS') {
@@ -73,7 +76,7 @@ class ShopScene extends Phaser.Scene {
 
   rowPanel(i) {
     const y = 170 + i * 108;
-    const p = uiPanel(this, 20, y, this.scale.width - 40, 96);
+    const p = uiPanel(this, 20, y, this.W - 40, 96);
     this.rows.add(p);
     return y;
   }
@@ -97,15 +100,15 @@ class ShopScene extends Phaser.Scene {
 
       let btn;
       if (isActive) {
-        btn = uiButton(this, this.scale.width - 90, y + 48, 110, 44, 'ACTIVE',
+        btn = uiButton(this, this.W - 90, y + 48, 110, 44, 'ACTIVE',
           null, { color: 0x2e7d32, size: 16, disabled: true });
       } else if (isOwned) {
-        btn = uiButton(this, this.scale.width - 90, y + 48, 110, 44, 'USE', () => {
+        btn = uiButton(this, this.W - 90, y + 48, 110, 44, 'USE', () => {
           select(key); window.SAVE.save(); this.refresh();
         }, { color: 0xb8860b, size: 18 });
       } else {
         const canAfford = save.bank >= item.price;
-        btn = uiButton(this, this.scale.width - 90, y + 48, 110, 44,
+        btn = uiButton(this, this.W - 90, y + 48, 110, 44,
           `BUY ${item.price}`, () => {
             if (window.SAVE.data.bank < item.price) return;
             window.SAVE.data.bank -= item.price;
@@ -123,7 +126,7 @@ class ShopScene extends Phaser.Scene {
     const save = window.SAVE.data;
     Object.entries(CATALOG.UPGRADES).forEach(([key, up], i) => {
       const y = this.rowPanel(i);
-      const icon = this.add.image(78, y + 48, up.icon).setScale(1.4);
+      const icon = this.add.image(78, y + 48, up.icon).setScale(1.4 * window.TEX_SCALE);
       this.rows.add(icon);
       const lvl = save.up[key];
       this.rows.add(this.add.text(150, y + 20, up.name, {
@@ -140,11 +143,11 @@ class ShopScene extends Phaser.Scene {
 
       let btn;
       if (lvl >= 3) {
-        btn = uiButton(this, this.scale.width - 90, y + 48, 110, 44, 'MAX',
+        btn = uiButton(this, this.W - 90, y + 48, 110, 44, 'MAX',
           null, { color: 0x2e7d32, size: 18, disabled: true });
       } else {
         const cost = CATALOG.UPGRADE_COST[lvl];
-        btn = uiButton(this, this.scale.width - 90, y + 48, 110, 44,
+        btn = uiButton(this, this.W - 90, y + 48, 110, 44,
           `BUY ${cost}`, () => {
             if (window.SAVE.data.bank < cost) return;
             window.SAVE.data.bank -= cost;
@@ -157,7 +160,7 @@ class ShopScene extends Phaser.Scene {
       this.rows.add(btn);
     });
 
-    this.rows.add(this.add.text(this.scale.width / 2, 170 + 3 * 108 + 20,
+    this.rows.add(this.add.text(this.W / 2, 170 + 3 * 108 + 20,
       'upgrades make every powerup last longer', {
         fontFamily: 'Arial', fontSize: '14px', color: '#c9a97f',
       }).setOrigin(0.5));

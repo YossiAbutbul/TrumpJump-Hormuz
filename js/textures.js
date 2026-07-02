@@ -12,8 +12,14 @@ function rr(ctx, x, y, w, h, r) {
 
 function tex(scene, key, w, h, draw) {
   if (scene.textures.exists(key)) return;
-  const t = scene.textures.createCanvas(key, w, h);
-  draw(t.getContext(), w, h);
+  // Draw at SS× the logical size so the art carries enough detail to stay sharp
+  // under the camera zoom. Sprites created from this texture display at natural
+  // (SS×) size, so callers apply TEX_SCALE (1/SS) to render at logical size.
+  const SS = window.SS || 1;
+  const t = scene.textures.createCanvas(key, w * SS, h * SS);
+  const ctx = t.getContext();
+  ctx.scale(SS, SS);
+  draw(ctx, w, h);
   t.refresh();
 }
 

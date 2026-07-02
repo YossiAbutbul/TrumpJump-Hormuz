@@ -27,7 +27,10 @@ class GameScene extends Phaser.Scene {
     this.boatKey = 'boat-' + save.ship;
     const map = CATALOG.MAPS[save.map];
 
-    const W = this.scale.width, H = this.scale.height;
+    const SS = window.SS, TS = window.TEX_SCALE;
+    // Render at SS× resolution but keep the world in logical 480×800 units.
+    window.setupCamera(this);
+    const W = this.scale.width / SS, H = this.scale.height / SS;
     this.W = W; this.H = H;
 
     this.dead = false;
@@ -50,22 +53,22 @@ class GameScene extends Phaser.Scene {
     this.magDur = 6000 + 1500 * save.up.magnet;
 
     // --- background ---
-    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScrollFactor(0).setDepth(-10);
+    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS).setScrollFactor(0).setDepth(-10);
     this.sun = this.add.image(W / 2, H - 340, map.sun === 'moon' ? 'moon' : 'sun')
-      .setScale(1.6).setScrollFactor(0).setDepth(-9);
+      .setScale(1.6 * TS).setScrollFactor(0).setDepth(-9);
     this.clouds = [];
     for (let i = 0; i < 5; i++) {
       const c = this.add.image(
         Phaser.Math.Between(0, W), Phaser.Math.Between(0, H), 'cloud'
       ).setScrollFactor(0).setDepth(-8).setTint(map.cloudTint)
-       .setAlpha(0.6).setScale(Phaser.Math.FloatBetween(0.6, 1.2));
+       .setAlpha(0.6).setScale(Phaser.Math.FloatBetween(0.6, 1.2) * TS);
       c.speed = Phaser.Math.FloatBetween(6, 18);
       c.par = Phaser.Math.FloatBetween(0.08, 0.2);
       c.baseY = c.y;
       this.clouds.push(c);
     }
-    this.add.image(W / 2, this.baseY - 60, 'coast').setDepth(-7);
-    this.sea = this.add.image(W / 2, H - 60, 'sea-' + save.map).setDepth(5);
+    this.add.image(W / 2, this.baseY - 60, 'coast').setScale(TS).setDepth(-7);
+    this.sea = this.add.image(W / 2, H - 60, 'sea-' + save.map).setScale(TS).setDepth(5);
 
     // --- groups ---
     this.platforms = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -93,16 +96,16 @@ class GameScene extends Phaser.Scene {
     // --- particles ---
     this.jetFlame = this.add.particles(0, 0, 'flame', {
       speed: { min: 120, max: 220 }, angle: { min: 80, max: 100 },
-      scale: { start: 1.4, end: 0 }, lifespan: 380, quantity: 2,
+      scale: { start: 1.4 * TS, end: 0 }, lifespan: 380, quantity: 2,
       emitting: false,
     }).setDepth(9);
     this.jetFlame.startFollow(this.player, 0, 42);
     this.burst = this.add.particles(0, 0, 'spark', {
-      speed: { min: 80, max: 260 }, scale: { start: 1, end: 0 },
+      speed: { min: 80, max: 260 }, scale: { start: 1 * TS, end: 0 },
       lifespan: 450, emitting: false,
     }).setDepth(12);
 
-    this.aura = this.add.image(0, 0, 'aura').setDepth(11).setVisible(false);
+    this.aura = this.add.image(0, 0, 'aura').setScale(TS).setDepth(11).setVisible(false);
 
     // --- collisions ---
     this.physics.add.collider(
@@ -155,7 +158,7 @@ class GameScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '24px', color: '#ffffff',
       stroke: '#71301f', strokeThickness: 5,
     }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(20);
-    this.add.image(30, 78, 'coin').setScale(0.85).setScrollFactor(0).setDepth(20);
+    this.add.image(30, 78, 'coin').setScale(0.85 * window.TEX_SCALE).setScrollFactor(0).setDepth(20);
     this.coinText = this.add.text(46, 78, '0', {
       fontFamily: FONT, fontSize: '18px', color: '#f5c542',
       stroke: '#71301f', strokeThickness: 4,
@@ -219,21 +222,24 @@ class GameScene extends Phaser.Scene {
 
   // ---------- spawning ----------
 
-  difficulty() { return Phaser.Math.Clamp(this.maxMeters / 300, 0, 1); }
+  difficulty() { return Phaser.Math.Clamp(this.maxMeters / 1500, 0, 1); }
 
   spawnPlatform(x, y, type) {
     const texKey = type === 'tanker' ? this.tankerKey
       : type === 'boat' ? this.boatKey : type;
+    const SS = window.SS;
     const plat = this.platforms.create(x, y, texKey);
     plat.type = type;
+    plat.setScale(window.TEX_SCALE);
     plat.setDepth(4);
     plat.body.checkCollision.down = false;
     plat.body.checkCollision.left = false;
     plat.body.checkCollision.right = false;
-    if (type === 'tanker') plat.body.setSize(140, 14).setOffset(5, 12);
-    if (type === 'boat')   plat.body.setSize(96, 12).setOffset(7, 10);
-    if (type === 'barrels') plat.body.setSize(90, 12).setOffset(3, 2);
-    if (type === 'buoy')   plat.body.setSize(40, 12).setOffset(4, 30);
+    // body sizes/offsets are in source (SS×) pixels, so scale them up by SS
+    if (type === 'tanker') plat.body.setSize(140 * SS, 14 * SS).setOffset(5 * SS, 12 * SS);
+    if (type === 'boat')   plat.body.setSize(96 * SS, 12 * SS).setOffset(7 * SS, 10 * SS);
+    if (type === 'barrels') plat.body.setSize(90 * SS, 12 * SS).setOffset(3 * SS, 2 * SS);
+    if (type === 'buoy')   plat.body.setSize(40 * SS, 12 * SS).setOffset(4 * SS, 30 * SS);
     if (type === 'boat') {
       const spd = (50 + 90 * this.difficulty()) * Phaser.Math.FloatBetween(0.8, 1.2);
       plat.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
@@ -266,7 +272,7 @@ class GameScene extends Phaser.Scene {
       const roll = Math.random();
       if (roll < 0.08) {
         this.springs.create(x + Phaser.Math.Between(-40, 40), y - 22, 'spring')
-          .setDepth(5);
+          .setScale(window.TEX_SCALE).setDepth(5);
       } else if (roll < 0.105) {
         this.spawnItem(x, y - 60, 'cap');
       } else if (roll < 0.13) {
@@ -282,42 +288,52 @@ class GameScene extends Phaser.Scene {
       this.spawnItem(x, y - 55, 'coin');
     }
 
-    if (this.maxMeters > 120 && Math.random() < 0.05 + 0.09 * d) {
+    if (this.maxMeters > 500 && Math.random() < 0.02 + 0.10 * d) {
       const drone = this.drones.create(
         Phaser.Math.Between(60, this.W - 60), y - gap / 2, 'drone');
-      drone.setDepth(6);
+      drone.setScale(window.TEX_SCALE).setDepth(6);
       const spd = 60 + 130 * d;
       drone.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
     }
 
-    if (this.maxMeters > 350 && Math.random() < 0.03 + 0.05 * d) {
+    if (this.maxMeters > 1000 && Math.random() < 0.02 + 0.06 * d) {
       this.scheduleMissile();
     }
   }
 
   scheduleMissile() {
+    const TS = window.TEX_SCALE;
+    // each missile gets its own launch column and indicator; travels straight up
     const x = Phaser.Math.Between(50, this.W - 50);
-    const warn = this.add.image(x, 46, 'warn').setScrollFactor(0).setDepth(22);
+    const iy = this.H - 92;
+    // yellow warning at the entry point
+    const warn = this.add.image(x, iy, 'warn')
+      .setScale(TS * 1.3).setTint(0xffe95e)
+      .setScrollFactor(0).setDepth(22);
     window.SFX.alarm();
     this.tweens.add({
-      targets: warn, alpha: 0.15, duration: 160, yoyo: true, repeat: 3,
-      onComplete: () => {
-        warn.destroy();
-        if (this.gameOver) return;
-        const m = this.missiles.create(
-          x, this.cameras.main.scrollY + this.H + 90, 'missile');
-        m.setDepth(8);
-        m.setVelocityY(-650);
-      },
+      targets: warn, alpha: 0.2, duration: 190, yoyo: true, repeat: 3,
+    });
+    this.tweens.add({
+      targets: warn, scale: TS * 1.7, duration: 380, yoyo: true, repeat: -1,
+    });
+    this.time.delayedCall(190 * 2 * 4, () => {
+      warn.destroy();
+      if (this.gameOver) return;
+      const m = this.missiles.create(
+        x, this.cameras.main.scrollY + this.H + 90, 'missile');
+      m.setScale(TS).setDepth(8);
+      m.setVelocityY(-680);
     });
   }
 
   spawnItem(x, y, type) {
     const it = this.items.create(x, y, type);
     it.itemType = type;
+    it.setScale(window.TEX_SCALE);
     it.setDepth(6);
     if (type === 'coin') {
-      this.tweens.add({ targets: it, scaleX: 0.15, duration: 380, yoyo: true, repeat: -1 });
+      this.tweens.add({ targets: it, scaleX: 0.15 * window.TEX_SCALE, duration: 380, yoyo: true, repeat: -1 });
     } else {
       this.tweens.add({ targets: it, y: y - 8, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }
@@ -342,7 +358,7 @@ class GameScene extends Phaser.Scene {
     this.player.setVelocityY(-1250);
     window.SFX.spring();
     this.squash();
-    this.tweens.add({ targets: s, scaleY: 0.5, duration: 90, yoyo: true });
+    this.tweens.add({ targets: s, scaleY: 0.5 * window.TEX_SCALE, duration: 90, yoyo: true });
     this.quote('spring', 0.4);
   }
 
@@ -410,7 +426,7 @@ class GameScene extends Phaser.Scene {
     this.player.setVelocity(Phaser.Math.Between(-120, 120), -300);
     this.player.body.setAngularVelocity(400);
     this.player.body.checkCollision.none = true;
-    this.cameras.main.shake(250, 0.015);
+    this.cameras.main.shake(180, 0.007);
   }
 
   quote(kind, chance) {
@@ -517,7 +533,8 @@ class GameScene extends Phaser.Scene {
       if (this.cursors.left.isDown || this.keys.A.isDown) dir = -1;
       if (this.cursors.right.isDown || this.keys.D.isDown) dir = 1;
       const ptr = this.input.activePointer;
-      if (ptr.isDown && ptr.y > 105) dir = ptr.x < this.W / 2 ? -1 : 1;
+      const SS = window.SS;
+      if (ptr.isDown && ptr.y / SS > 105) dir = ptr.x / SS < this.W / 2 ? -1 : 1;
       p.setVelocityX(dir * 330);
       if (dir !== 0) p.setFlipX(dir < 0);
     }

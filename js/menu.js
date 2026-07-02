@@ -20,27 +20,29 @@ class MenuScene extends Phaser.Scene {
       fly: this.textures.exists('trump-fly-img') ? 'trump-fly-img' : 'trump-fly',
       hit: this.textures.exists('trump-hit-img') ? 'trump-hit-img' : null,
     };
-    const W = this.scale.width, H = this.scale.height;
+    const SS = window.SS, TS = window.TEX_SCALE;
+    window.setupCamera(this);
+    const W = this.scale.width / SS, H = this.scale.height / SS;
     const map = CATALOG.MAPS[save.map];
 
-    this.add.image(W / 2, H / 2, 'sky-' + save.map);
-    this.add.image(W / 2, H - 340, map.sun === 'moon' ? 'moon' : 'sun').setScale(1.6);
-    this.add.image(W / 2, H - 250, 'coast');
-    this.add.image(W / 2, H - 90, 'sea-' + save.map);
+    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS);
+    this.add.image(W / 2, H - 340, map.sun === 'moon' ? 'moon' : 'sun').setScale(1.6 * TS);
+    this.add.image(W / 2, H - 250, 'coast').setScale(TS);
+    this.add.image(W / 2, H - 90, 'sea-' + save.map).setScale(TS);
 
     // drifting clouds
     this.clouds = [];
     for (let i = 0; i < 4; i++) {
       const c = this.add.image(
         Phaser.Math.Between(0, W), Phaser.Math.Between(60, 300), 'cloud'
-      ).setAlpha(0.8).setScale(Phaser.Math.FloatBetween(0.7, 1.3))
+      ).setAlpha(0.8).setScale(Phaser.Math.FloatBetween(0.7, 1.3) * TS)
        .setTint(map.cloudTint);
       c.speed = Phaser.Math.FloatBetween(8, 20);
       this.clouds.push(c);
     }
 
     // tanker sailing through the strait
-    const tanker = this.add.image(-100, H - 165, 'tanker-' + save.ship);
+    const tanker = this.add.image(-100, H - 165, 'tanker-' + save.ship).setScale(TS);
     this.tweens.add({
       targets: tanker, x: W + 120, duration: 24000, repeat: -1,
       onRepeat: () => { tanker.x = -100; },
@@ -48,7 +50,7 @@ class MenuScene extends Phaser.Scene {
 
     // bank + best pills
     uiPanel(this, 12, 12, 130, 40);
-    this.add.image(34, 32, 'coin').setScale(0.9);
+    this.add.image(34, 32, 'coin').setScale(0.9 * TS);
     this.add.text(50, 32, `${save.bank}`, {
       fontFamily: FONT, fontSize: '20px', color: '#f5c542',
     }).setOrigin(0, 0.5);
@@ -68,7 +70,7 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // bouncing trump with glow
-    const glow = this.add.image(W / 2, 330, 'sun').setScale(1.1).setAlpha(0.5);
+    const glow = this.add.image(W / 2, 330, 'sun').setScale(1.1 * TS).setAlpha(0.5);
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
     const trump = this.add.image(W / 2, 320, window.SKIN.idle).setScale(150 / srcH);
     this.tweens.add({
@@ -86,7 +88,7 @@ class MenuScene extends Phaser.Scene {
     ];
     legend.forEach(([key, label], i) => {
       const x = W / 2 + (i - 2) * 84;
-      this.add.image(x, 452, key);
+      this.add.image(x, 452, key).setScale(TS);
       this.add.text(x, 480, label, {
         fontFamily: FONT, fontSize: '13px', color: '#ffd9a8',
       }).setOrigin(0.5);
@@ -119,7 +121,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   update(_, dt) {
-    const W = this.scale.width;
+    const W = this.scale.width / window.SS;
     this.clouds.forEach(c => {
       c.x += c.speed * dt / 1000;
       if (c.x > W + 70) c.x = -70;
