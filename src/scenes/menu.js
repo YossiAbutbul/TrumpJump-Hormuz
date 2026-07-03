@@ -54,33 +54,40 @@ class MenuScene extends Phaser.Scene {
       onRepeat: () => { tanker.x = -100; },
     });
 
-    // bank + best pills
+    // bank + best pills (refs kept so login/sign-out can update them live)
     uiPanel(this, 12, 12, 130, 40);
     this.add.image(34, 32, 'coin').setScale(0.9 * TS);
-    this.add.text(50, 32, `${save.bank}`, {
+    this.bankText = this.add.text(50, 32, `${save.bank}`, {
       fontFamily: FONT, fontSize: '20px', color: '#f5c542',
     }).setOrigin(0, 0.5);
     uiPanel(this, W - 202, 12, 130, 40);
-    this.add.text(W - 137, 32, `BEST ${save.best}`, {
+    this.bestText = this.add.text(W - 137, 32, `BEST ${save.best}`, {
       fontFamily: FONT, fontSize: '16px', color: '#ffe9c9',
     }).setOrigin(0.5);
 
     // title
-    this.add.text(W / 2, 130, 'TRUMP JUMP', {
+    this.add.text(W / 2, 160, 'TRUMP JUMP', {
       fontFamily: FONT, fontSize: '58px', color: '#f5c542',
       stroke: '#71301f', strokeThickness: 10,
     }).setOrigin(0.5);
-    this.add.text(W / 2, 182, 'STRAIT OF HORMUZ', {
+    this.add.text(W / 2, 212, 'STRAIT OF HORMUZ', {
       fontFamily: FONT, fontSize: '24px', color: '#ffe9c9',
       stroke: '#71301f', strokeThickness: 6,
     }).setOrigin(0.5);
 
-    // bouncing trump with glow
-    const glow = this.add.image(W / 2, 330, 'sun').setScale(1.1 * TS).setAlpha(0.5);
+    // welcome greeting above the title (updates on login / sign-out / name change)
+    this.welcomeText = this.add.text(W / 2, 104, '', {
+      fontFamily: FONT, fontSize: '17px', color: '#f5c542',
+      stroke: '#71301f', strokeThickness: 4,
+    }).setOrigin(0.5);
+    this.refreshWelcome();
+
+    // bouncing trump with glow — centered between the header and the powerups
+    const glow = this.add.image(W / 2, 342, 'sun').setScale(1.1 * TS).setAlpha(0.5);
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
-    const trump = this.add.image(W / 2, 320, window.SKIN.idle).setScale(150 / srcH);
+    const trump = this.add.image(W / 2, 332, window.SKIN.idle).setScale(150 / srcH);
     this.tweens.add({
-      targets: trump, y: 310, duration: 1800,
+      targets: trump, y: 322, duration: 1800,
       yoyo: true, repeat: -1, ease: 'Sine.inOut',
     });
     this.tweens.add({
@@ -135,7 +142,10 @@ class MenuScene extends Phaser.Scene {
       if (window.settingsModal) window.settingsModal();
     });
 
-    // account chip (top center) + live auth updates
+    // account chip (top center) + live auth updates. Track the current user so
+    // a sign-in/out (identity change) rebuilds the whole menu — character,
+    // fleet, map and pills all reflect the newly loaded / reset save.
+    this._lastUid = (window.FB && window.FB.user) ? window.FB.user.uid : null;
     this.updateAccountChip();
     this._authHandler = () => this.onAuth();
     document.addEventListener('fb-auth', this._authHandler);
@@ -151,20 +161,51 @@ class MenuScene extends Phaser.Scene {
       });
     }
 
-    this.input.keyboard.once('keydown-SPACE', () => this.go());
+    // SPACE starts the game — but not while typing in a modal input (e.g.
+    // entering a name/code), where space is a normal character
+    this.input.keyboard.on('keydown-SPACE', () => {
+      const ae = document.activeElement;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+      this.go();
+    });
   }
 
   onAuth() {
     const fb = window.FB;
-    // prompt for a leaderboard name on first sign-in
-    if (fb && fb.user && (!fb.profile || !fb.profile.username) && !this._prompting) {
+    // a real sign-in/out (identity change) rebuilds the menu so the equipped
+    // skin, fleet, map and pills all reflect the loaded/reset save
+    const uid = (fb && fb.user) ? fb.user.uid : null;
+    if (uid !== this._lastUid) {
+      this._lastUid = uid;
+      this.scene.restart();
+      return;
+    }
+    // prompt for a leaderboard name on first sign-in — only once the profile
+    // has actually loaded, so a mid-load refresh doesn't falsely prompt
+    if (fb && fb.user && fb.profileLoaded
+        && (!fb.profile || !fb.profile.username) && !this._prompting) {
       this._prompting = true;
       window.promptUsername('', (name) => {
         this._prompting = false;
         if (name) fb.setUsername(name);
       });
     }
+    // reflect the merged (login) or reset-to-guest (sign-out) save immediately
+    this.refreshStats();
+    this.refreshWelcome();
     this.updateAccountChip();
+  }
+
+  refreshWelcome() {
+    const fb = window.FB;
+    const name = (fb && fb.profile && fb.profile.username) ? fb.profile.username : 'GUEST';
+    if (this.welcomeText) this.welcomeText.setText(`WELCOME, ${name.toUpperCase()}`);
+  }
+
+  refreshStats() {
+    const save = window.SAVE.data;
+    if (this.bankText) this.bankText.setText(`${save.bank}`);
+    if (this.bestText) this.bestText.setText(`BEST ${save.best}`);
   }
 
   updateAccountChip() {

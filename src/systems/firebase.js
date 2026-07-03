@@ -15,7 +15,7 @@ import {
 const cfg = window.FIREBASE_CONFIG || {};
 const configured = cfg.apiKey && !String(cfg.apiKey).startsWith('PASTE');
 
-const state = { user: null, profile: null };
+const state = { user: null, profile: null, profileLoaded: false };
 const emit = () => document.dispatchEvent(new CustomEvent('fb-auth', {
   detail: { user: state.user, profile: state.profile },
 }));
@@ -25,6 +25,7 @@ if (!configured) {
     enabled: false,
     get user() { return null; },
     get profile() { return null; },
+    get profileLoaded() { return true; },
     signIn() { alert('Leaderboard is not set up yet — paste your Firebase config in src/config/firebase-config.js.'); },
     signOut() {},
     setUsername() { return Promise.resolve(); },
@@ -62,13 +63,19 @@ if (!configured) {
     state.user = u ? { uid: u.uid, email: u.email, photo: u.photoURL } : null;
     if (u) {
       state.profile = await loadProfile(u.uid);
-      // merge cloud <-> local (best of each), then push the merged result up
+      state.profileLoaded = true; // profile is now resolved (may be null for a new user)
+      // merge cloud <-> local, keeping this account's own leaderboard best
       if (window.SAVE && window.SAVE.mergeCloud) {
-        window.SAVE.mergeCloud(state.profile);
+        window.SAVE.mergeCloud(state.profile, u.uid);
         await pushSave();
       }
     } else {
       state.profile = null;
+      state.profileLoaded = true;
+      // signed out -> fresh guest: wipe wallet, best and everything owned
+      // (skins/maps/fleet/upgrades) back to defaults. The account's real data
+      // stays safe in the cloud and returns via mergeCloud on the next sign-in.
+      if (window.SAVE && window.SAVE.resetToGuest) window.SAVE.resetToGuest();
     }
     emit();
   });
@@ -77,6 +84,7 @@ if (!configured) {
     enabled: true,
     get user() { return state.user; },
     get profile() { return state.profile; },
+    get profileLoaded() { return state.profileLoaded; },
 
     async signIn() {
       try { await signInWithPopup(auth, provider); }

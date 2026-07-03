@@ -16,26 +16,54 @@ window.FIREBASE_CONFIG = {
   measurementId: "G-8NWTBTEDQD",
 };
 
+// Funny Trump-themed fallback names, given a random 2-4 digit suffix so each
+// user gets a distinct handle when they don't pick one.
+window.FUNNY_NAMES = [
+  'Bigly', 'Covfefe', 'Tremendous', 'SirTanalot', 'CombOver',
+  'WallGuy', 'YugeCheeto', 'MagaMan', 'GoldToupee', 'NukeButton',
+  'FakeNewsFoe', 'RallyKing', 'Sharpiegate', 'Bonespurs', 'Hamberder',
+];
+window.randomFunnyName = () => {
+  const base = window.FUNNY_NAMES[Math.floor(Math.random() * window.FUNNY_NAMES.length)];
+  const n = 2 + Math.floor(Math.random() * 3); // 2..4 digits
+  let digits = '';
+  for (let i = 0; i < n; i++) digits += Math.floor(Math.random() * 10);
+  return (base + digits).slice(0, 16);
+};
+
 // Small DOM modal for picking a leaderboard username after first sign-in.
 // Defined here (classic script) so it is available before the module loads.
+// Closing (X) keeps the current name, or invents a funny one if there is none.
 window.promptUsername = (current, cb) => {
   const modal = document.getElementById('name-modal');
   const input = document.getElementById('name-input');
   const save = document.getElementById('name-save');
-  if (!modal || !input || !save) { cb(current || 'player'); return; }
+  const closeBtn = document.getElementById('name-close');
+  if (!modal || !input || !save) { cb((current && current.trim()) || window.randomFunnyName()); return; }
   input.value = current || '';
   modal.style.display = 'flex';
   input.focus();
-  const done = () => {
-    const v = input.value.trim().slice(0, 16) || 'player';
-    modal.style.display = 'none';
-    save.removeEventListener('click', done);
+
+  const cleanup = () => {
+    save.removeEventListener('click', onSave);
     input.removeEventListener('keydown', onKey);
+    if (closeBtn) closeBtn.removeEventListener('click', onClose);
+  };
+  // resolve to a name: typed value if given, else the existing name, else a
+  // generated funny one — never empty
+  const finish = (useInput) => {
+    let v = useInput ? input.value.trim().slice(0, 16) : '';
+    if (!v) v = (current && current.trim().slice(0, 16)) || window.randomFunnyName();
+    modal.style.display = 'none';
+    cleanup();
     cb(v);
   };
-  const onKey = (e) => { if (e.key === 'Enter') done(); };
-  save.addEventListener('click', done);
+  const onSave = () => finish(true);
+  const onClose = () => finish(false);
+  const onKey = (e) => { if (e.key === 'Enter') finish(true); };
+  save.addEventListener('click', onSave);
   input.addEventListener('keydown', onKey);
+  if (closeBtn) closeBtn.addEventListener('click', onClose);
 };
 
 // Custom account modal: sign-in choice when signed out, account actions when in.

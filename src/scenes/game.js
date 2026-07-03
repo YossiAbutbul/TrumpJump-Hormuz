@@ -457,9 +457,10 @@ class GameScene extends Phaser.Scene {
     this.burst.explode(32, this.player.x, this.player.y + 24);
     this.cameras.main.shake(140, 0.003);
     this.tweens.killTweensOf(this.player);
-    this.player.setScale(this.pScale * 0.86, this.pScale * 1.2);
+    const fs = this.poseScale(this.skin.fly);
+    this.player.setScale(fs * 0.86, fs * 1.2);
     this.tweens.add({
-      targets: this.player, scaleX: this.pScale, scaleY: this.pScale,
+      targets: this.player, scaleX: fs, scaleY: fs,
       duration: 280, ease: 'Back.out',
     });
     window.SFX.power();
@@ -550,12 +551,24 @@ class GameScene extends Phaser.Scene {
     window.SFX.shield();
   }
 
+  // display scale for a pose: normalise by the largest dimension so a wide
+  // pose (e.g. a sprawled hit/dying frame) renders the character at the same
+  // size as the idle instead of appearing bigger
+  poseScale(key) {
+    const s = this.textures.get(key).getSourceImage();
+    return 94 / Math.max(s.width, s.height);
+  }
+
   die() {
     if (this.dead) return;
     this.dead = true;
     window.SFX.hit();
-    if (this.skin.hit) this.player.setTexture(this.skin.hit);
-    else this.player.setTint(0xff7766);
+    if (this.skin.hit) {
+      this.player.setTexture(this.skin.hit);
+      this.player.setScale(this.poseScale(this.skin.hit));
+    } else {
+      this.player.setTint(0xff7766);
+    }
     this.player.setVelocity(Phaser.Math.Between(-120, 120), -225);
     this.player.body.setAngularVelocity(400);
     this.player.body.checkCollision.none = true;
@@ -686,6 +699,7 @@ class GameScene extends Phaser.Scene {
       } else {
         this.flying = false;
         p.setTexture(this.skin.idle);
+        p.setScale(this.pScale);
         this.jetFlame.stop();
       }
     }
