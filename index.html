@@ -140,6 +140,33 @@
     display: inline-flex; align-items: center; justify-content: center;
     color: #4285f4; font-weight: bold; font-family: Arial, sans-serif; font-size: 13px;
   }
+  #settings-modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(5, 7, 15, 0.7);
+    align-items: center; justify-content: center; z-index: 50;
+  }
+  #settings-modal .box {
+    position: relative; background: #16203f; border: 2px solid #f5c542;
+    border-radius: 14px; padding: 22px 24px; width: 300px; max-width: 82vw;
+    text-align: center; box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
+    font-family: "Luckiest Guy", Arial, sans-serif;
+  }
+  #settings-modal .m-close {
+    position: absolute; top: 6px; right: 12px; background: none; border: none;
+    color: #ffd9a8; font-size: 26px; line-height: 1; cursor: pointer;
+    font-family: Arial, sans-serif; padding: 2px 4px;
+  }
+  #settings-modal .m-close:hover { color: #fff; }
+  #settings-modal h3 { color: #f5c542; margin: 0 0 8px; letter-spacing: 1px; }
+  #settings-modal .m-sub {
+    color: #ffd9a8; font-family: Arial, sans-serif; font-size: 13px; margin: 0 0 14px;
+  }
+  #code-input {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px;
+    border: 2px solid #f5c542; background: #0a0e22; color: #fff; font-size: 18px;
+    outline: none; text-align: center; letter-spacing: 3px;
+  }
+  #code-msg { min-height: 18px; margin: 12px 0 0; font-size: 14px; font-family: Arial, sans-serif; }
 </style>
 </head>
 <body>
@@ -153,6 +180,17 @@
 </div>
 <div id="account-modal">
   <div class="box" id="account-box"></div>
+</div>
+<div id="settings-modal">
+  <div class="box">
+    <button class="m-close" id="settings-close">&times;</button>
+    <h3>SETTINGS</h3>
+    <button class="m-btn ghost" id="mute-toggle">🔊 SOUND: ON</button>
+    <p class="m-sub" style="margin-top: 18px;">Have a friend code? Enter it to unlock a bonus skin.</p>
+    <input id="code-input" maxlength="16" placeholder="enter code" autocomplete="off" inputmode="numeric">
+    <button class="m-btn danger" id="code-redeem">REDEEM</button>
+    <p class="m-sub" id="code-msg"></p>
+  </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script src="src/config/firebase-config.js"></script>

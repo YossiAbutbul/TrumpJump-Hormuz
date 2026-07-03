@@ -86,3 +86,70 @@ window.accountModal = () => {
   }
   modal.style.display = 'flex';
 };
+
+// Check a typed code against the catalog's secret skins and unlock (free) on
+// match. Generic: any skin with a `code` field can be redeemed here.
+window.redeemCode = (code) => {
+  code = String(code || '').trim();
+  if (!code) return { ok: false, msg: 'enter a code' };
+  const skins = window.CATALOG && window.CATALOG.SKINS;
+  const save = window.SAVE && window.SAVE.data;
+  if (!skins || !save) return { ok: false, msg: 'try again in a moment' };
+  const match = Object.entries(skins).find(([, s]) => s.code && String(s.code) === code);
+  if (!match) return { ok: false, msg: 'invalid code' };
+  const [key, skin] = match;
+  if (save.skins.includes(key)) return { ok: false, msg: `${skin.name} already unlocked` };
+  save.skins.push(key);
+  window.SAVE.save();
+  return { ok: true, msg: `${skin.name} unlocked! find it in the shop` };
+};
+
+// Settings modal: enter a friend code to unlock a secret skin.
+window.settingsModal = () => {
+  const modal = document.getElementById('settings-modal');
+  const input = document.getElementById('code-input');
+  const msg = document.getElementById('code-msg');
+  const redeem = document.getElementById('code-redeem');
+  const closeBtn = document.getElementById('settings-close');
+  const muteBtn = document.getElementById('mute-toggle');
+  if (!modal || !input) return;
+  input.value = '';
+  msg.textContent = '';
+  modal.style.display = 'flex';
+  input.focus();
+
+  const syncMute = () => {
+    const m = window.SAVE && window.SAVE.data.muted;
+    muteBtn.textContent = m ? '🔇 SOUND: OFF' : '🔊 SOUND: ON';
+  };
+  syncMute();
+  const onMute = () => {
+    if (!window.SAVE) return;
+    window.SAVE.data.muted = !window.SAVE.data.muted;
+    window.SAVE.save();
+    syncMute();
+    if (window.SFX && window.SFX.click) window.SFX.click();
+  };
+
+  const cleanup = () => {
+    redeem.removeEventListener('click', onRedeem);
+    closeBtn.removeEventListener('click', doClose);
+    input.removeEventListener('keydown', onKey);
+    modal.removeEventListener('click', onBackdrop);
+    muteBtn.removeEventListener('click', onMute);
+  };
+  const doClose = () => { modal.style.display = 'none'; cleanup(); };
+  const onRedeem = () => {
+    const res = window.redeemCode(input.value);
+    msg.textContent = res.msg;
+    msg.style.color = res.ok ? '#79e08a' : '#ff7a7a';
+    if (res.ok) input.value = '';
+  };
+  const onKey = (e) => { if (e.key === 'Enter') onRedeem(); };
+  const onBackdrop = (e) => { if (e.target === modal) doClose(); };
+  redeem.addEventListener('click', onRedeem);
+  closeBtn.addEventListener('click', doClose);
+  input.addEventListener('keydown', onKey);
+  modal.addEventListener('click', onBackdrop);
+  muteBtn.addEventListener('click', onMute);
+};

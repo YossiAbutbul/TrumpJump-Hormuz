@@ -119,6 +119,20 @@ class MenuScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '13px', color: '#ffd9a8',
     }).setOrigin(0.5);
 
+    // settings gear (bottom-left) — enter friend codes to unlock secret skins
+    const gear = this.add.container(40, H - 40).setDepth(6);
+    const gearBg = this.add.circle(0, 0, 21, 0x2b3a5e)
+      .setStrokeStyle(3, 0xffffff, 0.75)
+      .setInteractive({ useHandCursor: true });
+    gear.add(gearBg);
+    gear.add(this.add.text(0, 1, '⚙', { fontSize: '22px' }).setOrigin(0.5));
+    gearBg.on('pointerover', () => gear.setScale(1.1));
+    gearBg.on('pointerout', () => gear.setScale(1));
+    gearBg.on('pointerup', () => {
+      if (window.SFX && window.SFX.click) window.SFX.click();
+      if (window.settingsModal) window.settingsModal();
+    });
+
     // account chip (top center) + live auth updates
     this.updateAccountChip();
     this._authHandler = () => this.onAuth();

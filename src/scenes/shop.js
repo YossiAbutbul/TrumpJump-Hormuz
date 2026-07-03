@@ -97,10 +97,14 @@ class ShopScene extends Phaser.Scene {
     this.rowCount = 0;
 
     if (this.tab === 'SKINS') {
-      this.itemRows(CATALOG.SKINS, save.skins, save.skin,
+      // secret (friend-code) skins stay hidden from the shop until unlocked
+      const skins = Object.fromEntries(Object.entries(CATALOG.SKINS)
+        .filter(([k, s]) => !s.secret || save.skins.includes(k)));
+      this.itemRows(skins, save.skins, save.skin,
         (key) => {
-          const src = this.textures.get(`skin-${key}-idle`).getSourceImage();
-          return this.add.image(0, 0, `skin-${key}-idle`).setScale(78 / src.height);
+          const tex = this.textures.exists(`skin-${key}-idle`) ? `skin-${key}-idle` : 'skin-trump-idle';
+          const src = this.textures.get(tex).getSourceImage();
+          return this.add.image(0, 0, tex).setScale(78 / src.height);
         },
         (key) => { save.skin = key; },
         (key) => { save.skins.push(key); save.skin = key; },
