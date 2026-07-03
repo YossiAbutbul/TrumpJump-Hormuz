@@ -110,6 +110,41 @@ function buildTextures(scene) {
     ctx.fillText('MAGA', 21, 15);
   });
 
+  // ---- YOHAI67 jet powerup: blue bucket hat (replaces the MAGA cap) ----
+  tex(scene, 'cap-yohai', 40, 30, (ctx) => {
+    // wide drooping brim
+    ctx.fillStyle = '#173a97';
+    ctx.beginPath();
+    ctx.ellipse(20, 23, 18, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // rounded crown
+    ctx.fillStyle = '#2557d6';
+    ctx.beginPath();
+    ctx.moveTo(8, 23);
+    ctx.lineTo(11, 9);
+    ctx.quadraticCurveTo(20, 3, 29, 9);
+    ctx.lineTo(32, 23);
+    ctx.closePath(); ctx.fill();
+    // crown top highlight
+    ctx.fillStyle = '#4278ef';
+    ctx.beginPath();
+    ctx.ellipse(20, 10, 9, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // scattered white "8" / infinity dots
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    [[14, 14], [24, 12], [18, 18], [27, 17], [11, 20]].forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    // brim outline
+    ctx.strokeStyle = '#0f2a72';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(20, 23, 18, 6, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
   // ---- shield pickup (golden dome) ----
   tex(scene, 'shield', 34, 34, (ctx) => {
     ctx.fillStyle = 'rgba(245,197,66,0.35)';

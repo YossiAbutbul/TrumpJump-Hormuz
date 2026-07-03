@@ -15,7 +15,7 @@ window.CATALOG = {
     santa: { name: 'SANTA TRUMP', price: 2500, dir: 'santa', hit: true },
     mummy: { name: 'MUMMY TRUMP', price: 2500, dir: 'mummy', hit: true },
     sumo: { name: 'SUMO TRUMP', price: 3000, dir: 'sumo', hit: true },
-    yohai67: { name: 'YOHAI67', price: 0, dir: 'yohai67', hit: true, secret: true, code: '676767' },
+    yohai67: { name: 'YOHAI67', price: 0, dir: 'yohai67', hit: true, secret: true, code: '676767', cap: 'cap-yohai' },
     // e.g. biden: { name: 'SLEEPY JOE', price: 400, dir: 'biden', hit: true },
   },
   MAPS: {
@@ -77,5 +77,5 @@ window.CATALOG = {
     dome: { name: 'GOLDEN DOME', desc: '+1.8s shield per level', icon: 'shield' },
     magnet: { name: 'MONEY MAGNET', desc: '+1.5s magnet per level', icon: 'magnet' },
   },
-  UPGRADE_COST: [150, 400, 900],
+  UPGRADE_COST: [150, 400, 900, 1600, 2800, 4500],
 };
