@@ -283,10 +283,12 @@ class GameScene extends Phaser.Scene {
 
   difficulty() { return Phaser.Math.Clamp(this.maxMeters / 2600, 0, 1); }
 
-  // overall tempo creeps up as you climb so the run never gets stale. Jump
+  // overall tempo climbs with altitude so the run never gets stale. Jump
   // heights stay identical (bounce scales ×pace, gravity ×pace²) — only the
-  // pacing quickens, and only barely (up to ~15% at full difficulty).
-  pace() { return 1 + 0.15 * this.difficulty(); }
+  // pacing quickens. Ramps on its own longer scale than difficulty() (which
+  // caps at 2600m) so high-score play keeps speeding up: 1.0x at the start,
+  // up to 1.4x by ~4000m.
+  pace() { return 1 + 0.4 * Phaser.Math.Clamp(this.maxMeters / 4000, 0, 1); }
 
   spawnPlatform(x, y, type) {
     const texKey = type === 'tanker' ? this.tankerKey
@@ -685,7 +687,8 @@ class GameScene extends Phaser.Scene {
       const ptr = this.input.activePointer;
       const SS = window.SS;
       if (ptr.isDown && ptr.y / SS > 105) dir = ptr.x / SS < this.W / 2 ? -1 : 1;
-      p.setVelocityX(dir * 330);
+      // scale run speed with the tempo so you can still aim in the shorter airtime
+      p.setVelocityX(dir * 330 * this.pace());
       if (dir !== 0) p.setFlipX(dir < 0);
     }
 
