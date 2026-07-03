@@ -88,9 +88,11 @@ class MenuScene extends Phaser.Scene {
       ease: 'Sine.inOut',
     });
 
-    // powerup legend, compact
+    // powerup legend, compact — the JET icon uses the equipped skin's cap
+    const skinDef = CATALOG.SKINS[save.skin] || {};
+    const capIcon = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
     const legend = [
-      ['cap', 'JET'], ['spring', 'BOUNCE'], ['shield', 'DOME'],
+      [capIcon, 'JET'], ['spring', 'BOUNCE'], ['shield', 'DOME'],
       ['magnet', 'MAGNET'], ['coin', 'CASH'],
     ];
     legend.forEach(([key, label], i) => {

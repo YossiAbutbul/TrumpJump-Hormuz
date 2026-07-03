@@ -81,6 +81,10 @@ class GameScene extends Phaser.Scene {
 
     // --- player ---
     this.skin = window.SKIN || { idle: 'skin-trump-idle', fly: 'skin-trump-fly', hit: null };
+    // per-skin jet powerup art (falls back to the MAGA cap); only use the
+    // custom texture if it actually loaded
+    const skinDef = (window.CATALOG.SKINS[window.SAVE.data.skin]) || {};
+    this.capKey = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
     this.player = this.physics.add.sprite(W / 2, this.baseY - 60, this.skin.idle);
     this.player.setDepth(10);
     const src = this.textures.get(this.skin.idle).getSourceImage();
@@ -397,7 +401,9 @@ class GameScene extends Phaser.Scene {
   }
 
   spawnItem(x, y, type) {
-    const it = this.items.create(x, y, type);
+    // the jet powerup swaps its look per equipped skin (bucket hat for yohai67)
+    const texKey = type === 'cap' ? this.capKey : type;
+    const it = this.items.create(x, y, texKey);
     it.itemType = type;
     it.setScale(window.TEX_SCALE);
     it.setDepth(6);
