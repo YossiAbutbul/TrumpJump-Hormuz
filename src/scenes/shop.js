@@ -39,11 +39,51 @@ class ShopScene extends Phaser.Scene {
     });
 
     uiButton(this, W / 2, H - 56, 200, 52, 'BACK', () => this.scene.start('Menu'),
-      { color: 0x2b3a5e, size: 22 });
+      { color: 0x2b3a5e, size: 22 })
+      .setDepth(30); // always above the (possibly scrolling) item list
+
+    // scrollable list area: below the tabs, above the BACK button
+    this.listTop = 160;
+    this.listBottom = H - 74;
+    this.setupListScroll();
 
     this.rows = null;
     this.refresh();
   }
+
+  // ---------- scrolling ----------
+
+  setupListScroll() {
+    let dragging = false, lastY = 0;
+    const SS = window.SS;
+    this.input.on('pointerdown', (p) => {
+      if (p.y / SS < this.listTop) return; // ignore drags starting on tabs/header
+      dragging = true;
+      lastY = p.y;
+    });
+    this.input.on('pointerup', () => { dragging = false; });
+    this.input.on('pointerupoutside', () => { dragging = false; });
+    this.input.on('pointermove', (p) => {
+      if (!dragging || !p.isDown || !this.rows) return;
+      this.rows.y += (p.y - lastY) / SS;
+      lastY = p.y;
+      this.clampListScroll();
+    });
+    this.input.on('wheel', (p, over, dx, dy) => {
+      if (!this.rows) return;
+      this.rows.y -= dy * 0.4;
+      this.clampListScroll();
+    });
+  }
+
+  clampListScroll() {
+    const visibleH = this.listBottom - this.listTop;
+    const overflow = Math.max(0, this.contentHeight - visibleH);
+    const minY = -overflow;
+    this.rows.y = Phaser.Math.Clamp(this.rows.y, minY, 0);
+  }
+
+  // ---------- main refresh ----------
 
   refresh() {
     const save = window.SAVE.data;
@@ -54,6 +94,7 @@ class ShopScene extends Phaser.Scene {
     });
     if (this.rows) this.rows.destroy(true);
     this.rows = this.add.container(0, 0);
+    this.rowCount = 0;
 
     if (this.tab === 'SKINS') {
       this.itemRows(CATALOG.SKINS, save.skins, save.skin,
@@ -81,12 +122,23 @@ class ShopScene extends Phaser.Scene {
     } else {
       this.upgradeRows();
     }
+
+    // recompute scrollable content height for the tab we just built, and
+    // clip + reset scroll position (switching tabs always starts at the top)
+    this.contentHeight = 170 + this.rowCount * 108;
+    if (this.listMask) this.listMask.destroy();
+    const maskG = this.make.graphics();
+    maskG.fillRect(0, this.listTop, this.W, this.listBottom - this.listTop);
+    this.listMask = maskG.createGeometryMask();
+    this.rows.setMask(this.listMask);
+    this.rows.y = 0;
   }
 
   rowPanel(i) {
     const y = 170 + i * 108;
     const p = uiPanel(this, 20, y, this.W - 40, 96);
     this.rows.add(p);
+    this.rowCount = Math.max(this.rowCount, i + 1);
     return y;
   }
 
