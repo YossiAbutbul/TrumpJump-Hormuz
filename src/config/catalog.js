@@ -4,6 +4,9 @@
 // assets/skins/<dir>/ holding idle.png, fly.png and (optionally) hit.png.
 // To add a character: drop the folder in, then add an entry here — no code
 // changes needed. `trump` also has a procedural fallback drawn in gfx/textures.js.
+//
+// A skin with `secret: true` never shows in the shop until it is unlocked, and
+// its `code` unlocks it for free when typed into Settings (menu ⚙).
 window.CATALOG = {
   SKINS: {
     trump: { name: 'THE DONALD', price: 0, dir: 'trump', hit: true },
@@ -12,6 +15,7 @@ window.CATALOG = {
     santa: { name: 'SANTA TRUMP', price: 2500, dir: 'santa', hit: true },
     mummy: { name: 'MUMMY TRUMP', price: 2500, dir: 'mummy', hit: true },
     sumo: { name: 'SUMO TRUMP', price: 3000, dir: 'sumo', hit: true },
+    yohai67: { name: 'YOHAI67', price: 0, dir: 'yohai67', hit: true, secret: true, code: '676767' },
     // e.g. biden: { name: 'SLEEPY JOE', price: 400, dir: 'biden', hit: true },
   },
   MAPS: {
