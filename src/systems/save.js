@@ -7,7 +7,7 @@ window.SAVE = {
   data: null,
   load() {
     const def = {
-      bank: 0, best: 0,
+      bank: 0, best: 0, bestUid: null,
       maps: ['sunset'], map: 'sunset',
       ships: ['classic'], ship: 'classic',
       skins: ['trump'], skin: 'trump',
@@ -45,21 +45,45 @@ window.SAVE = {
   },
 
   // merge a cloud save into local, keeping the best of each (never loses
-  // purchases). Persists locally and returns the merged data.
-  mergeCloud(cloud) {
-    if (!cloud) return this.data;
+  // purchases). Persists locally and returns the merged data. `uid` is the
+  // signed-in user's id, used to keep the leaderboard best per-account.
+  mergeCloud(cloud, uid) {
+    cloud = cloud || {}; // a brand-new account has no cloud doc yet
     const d = this.data;
     d.bank = Math.max(d.bank || 0, cloud.bank || 0);
-    d.best = Math.max(d.best || 0, cloud.best || 0);
+    // best is per-account: only keep the local best if it already belongs to
+    // this signed-in user (e.g. an unsynced new record). Otherwise the local
+    // best is a guest's or another user's — adopt this account's own best.
+    const cloudBest = cloud.best || 0;
+    d.best = (uid && d.bestUid === uid) ? Math.max(d.best || 0, cloudBest) : cloudBest;
+    d.bestUid = uid || null;
     d.maps = Array.from(new Set([...(d.maps || ['sunset']), ...(cloud.maps || [])]));
     d.ships = Array.from(new Set([...(d.ships || ['classic']), ...(cloud.ships || [])]));
     d.skins = Array.from(new Set([...(d.skins || ['trump']), ...(cloud.skins || [])]));
     const up = d.up || {}, cup = cloud.up || {};
     ['jet', 'dome', 'magnet'].forEach(k => { up[k] = Math.max(up[k] || 0, cup[k] || 0); });
     d.up = up;
-    if (cloud.ship && d.ships.includes(cloud.ship) && !d.ships.includes(d.ship)) d.ship = cloud.ship;
-    if (cloud.map && d.maps.includes(cloud.map) && !d.maps.includes(d.map)) d.map = cloud.map;
-    if (cloud.skin && d.skins.includes(cloud.skin) && !d.skins.includes(d.skin)) d.skin = cloud.skin;
+    // restore the account's equipped selections (as long as they're owned)
+    if (cloud.ship && d.ships.includes(cloud.ship)) d.ship = cloud.ship;
+    if (cloud.map && d.maps.includes(cloud.map)) d.map = cloud.map;
+    if (cloud.skin && d.skins.includes(cloud.skin)) d.skin = cloud.skin;
+    this.save();
+    return this.data;
+  },
+
+  // wipe everything an account owns back to the free defaults — used on sign-out
+  // so a guest doesn't see the previous user's purchases. The account's real
+  // data stays in the cloud and returns via mergeCloud on the next sign-in.
+  // `muted` is a device preference, not account data, so it's left untouched.
+  resetToGuest() {
+    const d = this.data;
+    d.bank = 0;
+    d.best = 0;
+    d.bestUid = null;
+    d.maps = ['sunset']; d.map = 'sunset';
+    d.ships = ['classic']; d.ship = 'classic';
+    d.skins = ['trump']; d.skin = 'trump';
+    d.up = { jet: 0, dome: 0, magnet: 0 };
     this.save();
     return this.data;
   },
