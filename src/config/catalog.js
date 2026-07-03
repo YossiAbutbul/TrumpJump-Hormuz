@@ -7,6 +7,11 @@
 window.CATALOG = {
   SKINS: {
     trump: { name: 'THE DONALD', price: 0, dir: 'trump', hit: true },
+    disco: { name: 'DISCO KING', price: 2000, dir: 'disco', hit: true },
+    cowboy: { name: 'COWBOY TRUMP', price: 2000, dir: 'cowboy', hit: true },
+    santa: { name: 'SANTA TRUMP', price: 2500, dir: 'santa', hit: true },
+    mummy: { name: 'MUMMY TRUMP', price: 2500, dir: 'mummy', hit: true },
+    sumo: { name: 'SUMO TRUMP', price: 3000, dir: 'sumo', hit: true },
     // e.g. biden: { name: 'SLEEPY JOE', price: 400, dir: 'biden', hit: true },
   },
   MAPS: {
