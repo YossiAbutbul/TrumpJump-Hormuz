@@ -35,6 +35,15 @@ window.SAVE = {
     }
   },
 
+  // force an immediate cloud sync — used at game over so earned money is
+  // committed to the account right away instead of waiting on the debounce
+  // (which can be interrupted by leaving the screen, a sign-out, etc.)
+  flush() {
+    localStorage.setItem('tj-save', JSON.stringify(this.data));
+    clearTimeout(this._cloudT);
+    if (window.FB && window.FB.user && window.FB.saveCloud) window.FB.saveCloud();
+  },
+
   // the subset of save data that lives in the user's Firestore doc
   cloudBlob() {
     const d = this.data;
