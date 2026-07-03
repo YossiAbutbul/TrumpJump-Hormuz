@@ -622,7 +622,9 @@ class GameScene extends Phaser.Scene {
     const score = this.maxMeters;
     const isBest = score > save.best;
     if (isBest) save.best = score;
-    window.SAVE.save();
+    // flush to the cloud immediately so earned money reaches the account even
+    // if the player leaves the game-over screen before the debounced save fires
+    window.SAVE.flush();
     if (window.FB && window.FB.user) window.FB.submitScore(score);
 
     const W = this.W, H = this.H;
