@@ -7,6 +7,7 @@ class LeaderboardScene extends Phaser.Scene {
     const W = this.scale.width / SS, H = this.scale.height / SS;
     this.W = W; this.H = H;
     const save = window.SAVE.data;
+    buildFaceTextures(this); // circular avatars for each player's profile picture
 
     this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS);
     this.add.rectangle(W / 2, H / 2, W, H, 0x090b18, 0.66);
@@ -60,12 +61,17 @@ class LeaderboardScene extends Phaser.Scene {
     return g;
   }
 
-  avatar(cont, x, y, r, name, ringColor, ringW) {
+  avatar(cont, x, y, r, p, ringColor, ringW) {
     const bg = this.add.circle(x, y, r, 0x1c2a4a).setStrokeStyle(ringW, ringColor);
-    const t = this.add.text(x, y + 1, (name[0] || '?').toUpperCase(), {
-      fontFamily: FONT, fontSize: Math.round(r * 1.05) + 'px', color: '#ffffff',
-    }).setOrigin(0.5);
-    cont.add([bg, t]);
+    cont.add(bg);
+    const key = 'face-' + (p.pfp || 'trump');
+    if (this.textures.exists(key)) {
+      cont.add(this.add.image(x, y, key).setDisplaySize((r - ringW * 0.4) * 2, (r - ringW * 0.4) * 2));
+    } else {
+      cont.add(this.add.text(x, y + 1, ((p.username || '?')[0] || '?').toUpperCase(), {
+        fontFamily: FONT, fontSize: Math.round(r * 1.05) + 'px', color: '#ffffff',
+      }).setOrigin(0.5));
+    }
     return bg;
   }
 
@@ -124,7 +130,7 @@ class LeaderboardScene extends Phaser.Scene {
       }
 
       this.crown(cont, s.x, s.y - s.r - 20, s.i === 0 ? 46 : 34, col);
-      this.avatar(cont, s.x, s.y, s.r, p.username, col, s.i === 0 ? 6 : 4);
+      this.avatar(cont, s.x, s.y, s.r, p, col, s.i === 0 ? 6 : 4);
       this.rankBadge(cont, s.x + s.r * 0.72, s.y - s.r * 0.72, s.i + 1);
 
       const mine = p.uid === this.myUid;
@@ -172,7 +178,7 @@ class LeaderboardScene extends Phaser.Scene {
         fontFamily: FONT, fontSize: '20px', color: '#8fa0c0',
       }).setOrigin(0.5));
 
-      this.avatar(box, 100, y, 20, p.username, mine ? 0xf5c542 : 0x3a4a6a, 3);
+      this.avatar(box, 100, y, 20, p, mine ? 0xf5c542 : 0x3a4a6a, 3);
 
       box.add(this.add.text(134, y, p.username + (mine ? ' (you)' : ''), {
         fontFamily: FONT, fontSize: '18px', color: mine ? '#ffe95e' : '#eaf0ff',

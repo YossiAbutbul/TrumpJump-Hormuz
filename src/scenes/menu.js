@@ -16,6 +16,7 @@ class MenuScene extends Phaser.Scene {
     const save = window.SAVE.data;
     buildMapTextures(this, save.map);
     buildShipTextures(this, save.ship);
+    buildFaceTextures(this); // circular profile-picture avatars
     window.VOICE.init(this);
 
     // resolve the equipped skin's textures; fall back to the default trump skin
@@ -149,8 +150,12 @@ class MenuScene extends Phaser.Scene {
     this.updateAccountChip();
     this._authHandler = () => this.onAuth();
     document.addEventListener('fb-auth', this._authHandler);
-    this.events.once('shutdown', () =>
-      document.removeEventListener('fb-auth', this._authHandler));
+    this._pfpHandler = () => this.updateAccountChip();
+    document.addEventListener('pfp-change', this._pfpHandler);
+    this.events.once('shutdown', () => {
+      document.removeEventListener('fb-auth', this._authHandler);
+      document.removeEventListener('pfp-change', this._pfpHandler);
+    });
     this.onAuth();
 
     // first-ever visit: offer sign in vs play as guest
@@ -213,27 +218,31 @@ class MenuScene extends Phaser.Scene {
     const fb = window.FB;
     const W = this.scale.width / window.SS;
     const signedIn = fb && fb.user;
-    const c = this.add.container(W - 32, 33).setDepth(6);
+    const cx = W - 32, cy = 33, R = 19;
+    const c = this.add.container(cx, cy).setDepth(6);
     const bg = signedIn ? 0x2e7d32 : 0x2b3a5e;
-    const circle = this.add.circle(0, 0, 19, bg)
+    const circle = this.add.circle(0, 0, R, bg)
       .setStrokeStyle(3, 0xffffff, 0.85)
       .setInteractive({ useHandCursor: true });
     c.add(circle);
-    if (signedIn) {
+
+    // profile picture: the chosen Trump-skin face (pre-rendered circular avatar)
+    const faceKey = 'face-' + (window.SAVE.data.pfp || 'trump');
+    if (this.textures.exists(faceKey)) {
+      const img = this.add.image(0, 0, faceKey).setDisplaySize((R - 1.5) * 2, (R - 1.5) * 2);
+      c.add(img);
+    } else if (signedIn) {
       const name = (fb.profile && fb.profile.username) || '';
       c.add(this.add.text(0, 1, (name[0] || '?').toUpperCase(), {
         fontFamily: FONT, fontSize: '18px', color: '#ffffff',
       }).setOrigin(0.5));
     } else {
-      // simple person silhouette
       const g = this.add.graphics();
       g.fillStyle(0xffffff, 0.92);
       g.fillCircle(0, -4, 5);
       g.fillEllipse(0, 11, 17, 12);
       c.add(g);
     }
-    circle.on('pointerover', () => c.setScale(1.1));
-    circle.on('pointerout', () => c.setScale(1));
     circle.on('pointerup', () => {
       if (window.SFX && window.SFX.click) window.SFX.click();
       this.onAccountClick();

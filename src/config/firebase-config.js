@@ -66,6 +66,34 @@ window.promptUsername = (current, cb) => {
   if (closeBtn) closeBtn.addEventListener('click', onClose);
 };
 
+// Populate a container with a profile-picture picker: every (non-secret)
+// Trump-skin face. Selecting one saves it and refreshes the on-screen avatar.
+window.renderPfpGrid = (grid) => {
+  if (!grid || !window.CATALOG) return;
+  grid.innerHTML = '';
+  const current = (window.SAVE && window.SAVE.data.pfp) || 'trump';
+  Object.entries(window.CATALOG.SKINS).forEach(([id, s]) => {
+    if (s.secret) return;
+    const btn = document.createElement('button');
+    btn.className = 'pfp' + (id === current ? ' sel' : '');
+    btn.title = s.name;
+    const im = document.createElement('img');
+    im.src = 'assets/skins/' + s.dir + '/idle.png';
+    im.alt = s.name;
+    btn.appendChild(im);
+    btn.onclick = () => {
+      if (!window.SAVE) return;
+      window.SAVE.data.pfp = id;
+      window.SAVE.save();
+      grid.querySelectorAll('.pfp').forEach((b) => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      document.dispatchEvent(new CustomEvent('pfp-change'));
+      if (window.SFX && window.SFX.click) window.SFX.click();
+    };
+    grid.appendChild(btn);
+  });
+};
+
 // Custom account modal: sign-in choice when signed out, account actions when in.
 window.accountModal = () => {
   const modal = document.getElementById('account-modal');
@@ -92,11 +120,22 @@ window.accountModal = () => {
     box.appendChild(b);
     return b;
   };
+  const pfpSection = () => {
+    const label = document.createElement('p');
+    label.className = 'm-sub'; label.textContent = 'Profile picture';
+    label.style.margin = '2px 0 8px';
+    box.appendChild(label);
+    const grid = document.createElement('div');
+    grid.id = 'pfp-grid';
+    box.appendChild(grid);
+    window.renderPfpGrid(grid);
+  };
 
   if (fb && fb.user) {
     const name = (fb.profile && fb.profile.username) || 'player';
     title('HI, ' + name.toUpperCase());
     sub('best: ' + ((fb.profile && fb.profile.best) || 0) + ' m');
+    pfpSection();
     btn('CHANGE NAME', 'ghost', () => {
       close();
       window.promptUsername(name, (n) => { if (n && fb.setUsername) fb.setUsername(n); });
@@ -106,6 +145,7 @@ window.accountModal = () => {
   } else {
     title('PLAY');
     sub('sign in to save your progress across devices and climb the leaderboard');
+    pfpSection();
     btn('SIGN IN WITH GOOGLE', 'google', () => {
       close();
       if (fb && fb.signIn) fb.signIn();
