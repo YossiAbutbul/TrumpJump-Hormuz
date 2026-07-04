@@ -124,7 +124,7 @@ if (!configured) {
         const rows = [];
         snap.forEach((d) => {
           const v = d.data();
-          if (v.best) rows.push({ uid: d.id, username: v.username || 'anon', best: v.best });
+          if (v.best) rows.push({ uid: d.id, username: v.username || 'anon', best: v.best, pfp: v.pfp || 'trump' });
         });
         return rows;
       } catch (e) { console.warn('leaderboard load failed', e); return []; }

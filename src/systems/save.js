@@ -11,6 +11,7 @@ window.SAVE = {
       maps: ['sunset'], map: 'sunset',
       ships: ['classic'], ship: 'classic',
       skins: ['trump'], skin: 'trump',
+      pfp: 'trump', // chosen profile-picture face
       up: { jet: 0, dome: 0, magnet: 0 },
       muted: false,
     };
@@ -49,7 +50,7 @@ window.SAVE = {
     const d = this.data;
     return {
       bank: d.bank, best: d.best, maps: d.maps, ships: d.ships, skins: d.skins,
-      up: d.up, ship: d.ship, map: d.map, skin: d.skin,
+      up: d.up, ship: d.ship, map: d.map, skin: d.skin, pfp: d.pfp,
     };
   },
 
@@ -76,6 +77,7 @@ window.SAVE = {
     if (cloud.ship && d.ships.includes(cloud.ship)) d.ship = cloud.ship;
     if (cloud.map && d.maps.includes(cloud.map)) d.map = cloud.map;
     if (cloud.skin && d.skins.includes(cloud.skin)) d.skin = cloud.skin;
+    if (cloud.pfp) d.pfp = cloud.pfp;
     this.save();
     return this.data;
   },
@@ -92,6 +94,7 @@ window.SAVE = {
     d.maps = ['sunset']; d.map = 'sunset';
     d.ships = ['classic']; d.ship = 'classic';
     d.skins = ['trump']; d.skin = 'trump';
+    d.pfp = 'trump';
     d.up = { jet: 0, dome: 0, magnet: 0 };
     this.save();
     return this.data;

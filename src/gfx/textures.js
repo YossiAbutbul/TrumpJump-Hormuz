@@ -437,3 +437,30 @@ function buildMapTextures(scene, key) {
     }
   });
 }
+
+// ---- circular profile-picture avatar for a skin, pre-rendered once so the
+// account chip and leaderboard can use it directly (no runtime masks) ----
+
+function buildFaceTexture(scene, id) {
+  const key = 'face-' + id;
+  if (scene.textures.exists(key)) return;
+  const srcKey = 'skin-' + id + '-idle';
+  if (!scene.textures.exists(srcKey)) return;
+  const src = scene.textures.get(srcKey).getSourceImage();
+  const D = 160;
+  const canvas = scene.textures.createCanvas(key, D, D);
+  const ctx = canvas.getContext();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(D / 2, D / 2, D / 2, 0, Math.PI * 2);
+  ctx.clip();
+  const scale = (D * 1.15) / src.width;         // show the whole head
+  const dw = src.width * scale, dh = src.height * scale;
+  ctx.drawImage(src, (D - dw) / 2, D / 2 - dh * 0.30, dw, dh);
+  ctx.restore();
+  canvas.refresh();
+}
+
+function buildFaceTextures(scene) {
+  Object.keys(CATALOG.SKINS).forEach((id) => buildFaceTexture(scene, id));
+}
