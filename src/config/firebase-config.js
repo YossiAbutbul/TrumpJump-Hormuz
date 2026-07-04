@@ -156,7 +156,6 @@ window.accountModal = () => {
   } else {
     title('PLAY');
     sub('sign in to save your progress across devices and climb the leaderboard');
-    pfpSection();
     btn('SIGN IN WITH GOOGLE', 'google', () => {
       close();
       if (fb && fb.signIn) fb.signIn();
