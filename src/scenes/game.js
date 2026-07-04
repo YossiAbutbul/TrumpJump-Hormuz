@@ -100,6 +100,18 @@ class GameScene extends Phaser.Scene {
     this.lastPlatX = W / 2; // each platform stays within reach of the last one
     for (let i = 0; i < 8; i++) this.spawnNext();
 
+    // the sea is a safe, invisible bounce floor at the very start — drifting off
+    // the first platform into the water bounces you instead of killing you. It
+    // is a normal platform, so it scrolls down and gets culled once you climb
+    // clear of the start (after which a fall is lethal again).
+    const water = this.platforms.create(W / 2, this.sea.y - 34, 'spark');
+    water.type = 'water';
+    water.setVisible(false).setScale(1);
+    water.body.setSize(W * 3, 20);
+    water.body.checkCollision.down = false;
+    water.body.checkCollision.left = false;
+    water.body.checkCollision.right = false;
+
     // --- particles ---
     this.jetFlame = this.add.particles(0, 0, 'flame', {
       speed: { min: 200, max: 360 }, angle: { min: 74, max: 106 },
@@ -371,8 +383,9 @@ class GameScene extends Phaser.Scene {
       drone.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
     }
 
-    // missiles: one at a time to start, up to two together later in the run
-    if (this.maxMeters > 1000 && Math.random() < 0.015 + 0.04 * d) {
+    // missiles: one at a time to start, up to two together later in the run.
+    // none while flying — you'd outrun them and never see the warning anyway
+    if (!this.flying && this.maxMeters > 1000 && Math.random() < 0.015 + 0.04 * d) {
       const cap = this.maxMeters > 2000 ? 2 : 1;
       if (this.missiles.countActive() + this.pendingMissiles < cap) {
         this.scheduleMissile();
@@ -400,7 +413,7 @@ class GameScene extends Phaser.Scene {
     this.time.delayedCall(190 * 2 * 4, () => {
       this.pendingMissiles = Math.max(0, this.pendingMissiles - 1);
       warn.destroy();
-      if (this.gameOver) return;
+      if (this.gameOver || this.flying) return; // don't launch during flight
       const m = this.missiles.create(
         x, this.cameras.main.scrollY + this.H + 90, 'missile');
       m.setScale(TS).setDepth(8);
@@ -460,6 +473,8 @@ class GameScene extends Phaser.Scene {
   startBoost() {
     this.flying = true;
     this.flyUntil = this.time.now + this.jetDur;
+    // clear any missiles already in the air so flight starts clean
+    this.missiles.clear(true, true);
     this.player.setTexture(this.skin.fly);
     this.jetFlame.start();
     this.burst.explode(32, this.player.x, this.player.y + 24);
