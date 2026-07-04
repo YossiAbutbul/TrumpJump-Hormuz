@@ -97,6 +97,7 @@ class GameScene extends Phaser.Scene {
 
     this.spawnPlatform(W / 2, this.baseY, 'tanker');
     this.nextPlatformY = this.baseY - 100;
+    this.lastPlatX = W / 2; // each platform stays within reach of the last one
     for (let i = 0; i < 8; i++) this.spawnNext();
 
     // --- particles ---
@@ -307,7 +308,8 @@ class GameScene extends Phaser.Scene {
     if (type === 'barrels') plat.body.setSize(90 * SS, 12 * SS).setOffset(3 * SS, 2 * SS);
     if (type === 'buoy')   plat.body.setSize(40 * SS, 12 * SS).setOffset(4 * SS, 30 * SS);
     if (type === 'boat') {
-      const spd = (45 + 60 * this.difficulty()) * Phaser.Math.FloatBetween(0.8, 1.2);
+      // slower so a boat can't drift out of reach during a single jump
+      const spd = (35 + 40 * this.difficulty()) * Phaser.Math.FloatBetween(0.8, 1.2);
       plat.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
     }
     return plat;
@@ -315,12 +317,16 @@ class GameScene extends Phaser.Scene {
 
   spawnNext() {
     const d = this.difficulty();
-    // keep the largest gap comfortably under the jump height (~162px) so the
+    // keep the largest gap comfortably under the jump height (~240px) so the
     // player can always reach the next platform — never stranded with no room
-    const gap = Phaser.Math.Between(80, 100 + Math.floor(20 * d));
+    const gap = Phaser.Math.Between(75, 95 + Math.floor(15 * d));
     this.nextPlatformY -= gap;
     const y = this.nextPlatformY;
-    const x = Phaser.Math.Between(70, this.W - 70);
+    // place within horizontal reach of the previous platform so there is always
+    // a climbable path (fully random X could strand you far + high to the side)
+    const x = Phaser.Math.Clamp(
+      this.lastPlatX + Phaser.Math.Between(-165, 165), 70, this.W - 70);
+    this.lastPlatX = x;
 
     let type;
     const r = Math.random();
