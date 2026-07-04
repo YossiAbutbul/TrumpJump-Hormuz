@@ -226,9 +226,10 @@ class MenuScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     c.add(circle);
 
-    // profile picture: the chosen Trump-skin face (pre-rendered circular avatar)
+    // signed in: the chosen Trump-skin face (pre-rendered circular avatar).
+    // guests get a plain silhouette — no profile picture.
     const faceKey = 'face-' + (window.SAVE.data.pfp || 'trump');
-    if (this.textures.exists(faceKey)) {
+    if (signedIn && this.textures.exists(faceKey)) {
       const img = this.add.image(0, 0, faceKey).setDisplaySize((R - 1.5) * 2, (R - 1.5) * 2);
       c.add(img);
     } else if (signedIn) {
