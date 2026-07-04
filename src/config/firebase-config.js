@@ -31,6 +31,15 @@ window.randomFunnyName = () => {
   return (base + digits).slice(0, 16);
 };
 
+// While a DOM modal is open, stop Phaser from also processing the tap on the
+// game buttons behind it (pointer events bubble to the window regardless of the
+// overlay, so a tap on a modal control could otherwise also hit PLAY, etc.).
+window.setGameInputEnabled = (on) => {
+  const g = window.game;
+  if (!g || !g.scene) return;
+  g.scene.scenes.forEach((s) => { if (s.input) s.input.enabled = on; });
+};
+
 // Small DOM modal for picking a leaderboard username after first sign-in.
 // Defined here (classic script) so it is available before the module loads.
 // Closing (X) keeps the current name, or invents a funny one if there is none.
@@ -42,6 +51,7 @@ window.promptUsername = (current, cb) => {
   if (!modal || !input || !save) { cb((current && current.trim()) || window.randomFunnyName()); return; }
   input.value = current || '';
   modal.style.display = 'flex';
+  window.setGameInputEnabled(false);
   input.focus();
 
   const cleanup = () => {
@@ -55,6 +65,7 @@ window.promptUsername = (current, cb) => {
     let v = useInput ? input.value.trim().slice(0, 16) : '';
     if (!v) v = (current && current.trim().slice(0, 16)) || window.randomFunnyName();
     modal.style.display = 'none';
+    window.setGameInputEnabled(true);
     cleanup();
     cb(v);
   };
@@ -100,7 +111,7 @@ window.accountModal = () => {
   const box = document.getElementById('account-box');
   if (!modal || !box) return;
   const fb = window.FB;
-  const close = () => { modal.style.display = 'none'; };
+  const close = () => { modal.style.display = 'none'; window.setGameInputEnabled(true); };
   box.innerHTML = '';
 
   const x = document.createElement('button');
@@ -153,6 +164,7 @@ window.accountModal = () => {
     btn('PLAY AS GUEST', 'ghost', close);
   }
   modal.style.display = 'flex';
+  window.setGameInputEnabled(false);
 };
 
 // Check a typed code against the catalog's secret skins and unlock (free) on
@@ -184,6 +196,7 @@ window.settingsModal = () => {
   input.value = '';
   msg.textContent = '';
   modal.style.display = 'flex';
+  window.setGameInputEnabled(false);
   input.focus();
 
   const syncMute = () => {
@@ -206,7 +219,7 @@ window.settingsModal = () => {
     modal.removeEventListener('click', onBackdrop);
     muteBtn.removeEventListener('click', onMute);
   };
-  const doClose = () => { modal.style.display = 'none'; cleanup(); };
+  const doClose = () => { modal.style.display = 'none'; window.setGameInputEnabled(true); cleanup(); };
   const onRedeem = () => {
     const res = window.redeemCode(input.value);
     msg.textContent = res.msg;
