@@ -86,15 +86,24 @@ class MenuScene extends Phaser.Scene {
     // bouncing trump with glow — centered between the header and the powerups
     const glow = this.add.image(W / 2, 342, 'sun').setScale(1.1 * TS).setAlpha(0.5);
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
-    const trump = this.add.image(W / 2, 332, window.SKIN.idle).setScale(150 / srcH);
+    this.char = this.add.image(W / 2, 332, window.SKIN.idle).setScale(150 / srcH);
     this.tweens.add({
-      targets: trump, y: 322, duration: 1800,
+      targets: this.char, y: 322, duration: 1800,
       yoyo: true, repeat: -1, ease: 'Sine.inOut',
     });
     this.tweens.add({
       targets: glow, alpha: 0.35, duration: 1800, yoyo: true, repeat: -1,
       ease: 'Sine.inOut',
     });
+
+    // left/right arrows to switch the equipped skin right from the menu
+    // (only among owned skins; hidden when the player owns just one)
+    this.skinArrows = [
+      this.makeSkinArrow(W / 2 - 120, 332, -1),
+      this.makeSkinArrow(W / 2 + 120, 332, 1),
+    ];
+    const canSwitch = this.ownedSkins().length > 1;
+    this.skinArrows.forEach(a => a.setVisible(canSwitch));
 
     // powerup legend, compact — the JET icon uses the equipped skin's cap
     const skinDef = CATALOG.SKINS[save.skin] || {};
@@ -105,7 +114,8 @@ class MenuScene extends Phaser.Scene {
     ];
     legend.forEach(([key, label], i) => {
       const x = W / 2 + (i - 2) * 84;
-      this.add.image(x, 452, key).setScale(TS);
+      const icon = this.add.image(x, 452, key).setScale(TS);
+      if (label === 'JET') this.jetIcon = icon; // updates when the skin changes
       this.add.text(x, 480, label, {
         fontFamily: FONT, fontSize: '13px', color: '#ffd9a8',
       }).setOrigin(0.5);
@@ -169,10 +179,68 @@ class MenuScene extends Phaser.Scene {
     // SPACE starts the game — but not while typing in a modal input (e.g.
     // entering a name/code), where space is a normal character
     this.input.keyboard.on('keydown-SPACE', () => {
-      const ae = document.activeElement;
-      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+      if (this.typingInModal()) return;
       this.go();
     });
+
+    // left/right also flip through owned skins on the menu
+    this.input.keyboard.on('keydown-LEFT', () => {
+      if (!this.typingInModal()) this.cycleSkin(-1);
+    });
+    this.input.keyboard.on('keydown-RIGHT', () => {
+      if (!this.typingInModal()) this.cycleSkin(1);
+    });
+  }
+
+  typingInModal() {
+    const ae = document.activeElement;
+    return !!(ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA'));
+  }
+
+  // owned skins in catalog order
+  ownedSkins() {
+    const save = window.SAVE.data;
+    return Object.keys(CATALOG.SKINS).filter(k => save.skins.includes(k));
+  }
+
+  // circular ‹ / › button flanking the character
+  makeSkinArrow(x, y, dir) {
+    const cont = this.add.container(x, y).setDepth(6);
+    const bg = this.add.circle(0, 0, 20, 0x2b3a5e)
+      .setStrokeStyle(3, 0xffffff, 0.75)
+      .setInteractive({ useHandCursor: true });
+    cont.add(bg);
+    cont.add(this.add.text(dir < 0 ? -1 : 1, 0, dir < 0 ? '‹' : '›', {
+      fontFamily: FONT, fontSize: '30px', color: '#ffffff',
+    }).setOrigin(0.5));
+    bg.on('pointerover', () => cont.setScale(1.1));
+    bg.on('pointerout', () => cont.setScale(1));
+    bg.on('pointerup', () => this.cycleSkin(dir));
+    return cont;
+  }
+
+  // switch the equipped skin to the next/previous owned one and refresh visuals
+  cycleSkin(dir) {
+    const owned = this.ownedSkins();
+    if (owned.length <= 1) return;
+    const save = window.SAVE.data;
+    let i = owned.indexOf(save.skin);
+    if (i < 0) i = 0;
+    const id = owned[(i + dir + owned.length) % owned.length];
+    save.skin = id;
+    window.SAVE.save();
+    if (window.SFX && window.SFX.click) window.SFX.click();
+
+    window.SKIN = {
+      idle: `skin-${id}-idle`,
+      fly: this.textures.exists(`skin-${id}-fly`) ? `skin-${id}-fly` : `skin-${id}-idle`,
+      hit: this.textures.exists(`skin-${id}-hit`) ? `skin-${id}-hit` : null,
+    };
+    const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
+    this.char.setTexture(window.SKIN.idle).setScale(150 / srcH);
+    const skinDef = CATALOG.SKINS[id] || {};
+    const capIcon = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
+    if (this.jetIcon) this.jetIcon.setTexture(capIcon);
   }
 
   onAuth() {
