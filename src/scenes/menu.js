@@ -102,8 +102,7 @@ class MenuScene extends Phaser.Scene {
       this.makeSkinArrow(W / 2 - 120, 332, -1),
       this.makeSkinArrow(W / 2 + 120, 332, 1),
     ];
-    const canSwitch = this.ownedSkins().length > 1;
-    this.skinArrows.forEach(a => a.setVisible(canSwitch));
+    this.refreshSkinArrows();
 
     // powerup legend, compact — the JET icon uses the equipped skin's cap
     const skinDef = CATALOG.SKINS[save.skin] || {};
@@ -233,14 +232,16 @@ class MenuScene extends Phaser.Scene {
     cont.add(chevron);
 
     // gentle idle: halo breathes and the button nudges outward, hinting "tap me"
-    this.tweens.add({
-      targets: glow, alpha: 0.32, scale: 1.18, duration: 1100,
-      yoyo: true, repeat: -1, ease: 'Sine.inOut',
-    });
-    this.tweens.add({
-      targets: cont, x: x + s * 4, duration: 1100,
-      yoyo: true, repeat: -1, ease: 'Sine.inOut',
-    });
+    const idle = [
+      this.tweens.add({
+        targets: glow, alpha: 0.32, scale: 1.18, duration: 1100,
+        yoyo: true, repeat: -1, ease: 'Sine.inOut',
+      }),
+      this.tweens.add({
+        targets: cont, x: x + s * 4, duration: 1100,
+        yoyo: true, repeat: -1, ease: 'Sine.inOut',
+      }),
+    ];
 
     bg.on('pointerover', () => { bg.setFillStyle(0x24305a, 0.95); cont.setScale(1.12); });
     bg.on('pointerout', () => { bg.setFillStyle(0x141a33, 0.92); cont.setScale(1); });
@@ -249,7 +250,31 @@ class MenuScene extends Phaser.Scene {
       cont.setScale(1.12);
       this.cycleSkin(dir);
     });
+
+    // enabled = live gold button; disabled = dimmed, static, non-interactive
+    cont.setEnabled = (on) => {
+      cont.enabled = on;
+      cont.setAlpha(on ? 1 : 0.28);
+      bg.setStrokeStyle(3, on ? 0xf5c542 : 0x6b7390, on ? 0.95 : 0.8);
+      if (on) {
+        bg.setInteractive({ useHandCursor: true });
+        idle.forEach(t => t.resume());
+      } else {
+        bg.disableInteractive();
+        bg.setFillStyle(0x141a33, 0.92);
+        idle.forEach(t => t.pause());
+        cont.x = x;          // undo any mid-tween nudge
+        cont.setScale(1);
+      }
+    };
     return cont;
+  }
+
+  // arrows only work when there is more than one owned skin to cycle through
+  refreshSkinArrows() {
+    if (!this.skinArrows) return;
+    const canSwitch = this.ownedSkins().length > 1;
+    this.skinArrows.forEach(a => a.setEnabled(canSwitch));
   }
 
   // switch the equipped skin to the next/previous owned one and refresh visuals
