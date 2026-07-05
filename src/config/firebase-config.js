@@ -83,8 +83,15 @@ window.renderPfpGrid = (grid) => {
   if (!grid || !window.CATALOG) return;
   grid.innerHTML = '';
   const current = (window.SAVE && window.SAVE.data.pfp) || 'trump';
-  Object.entries(window.CATALOG.SKINS).forEach(([id, s]) => {
-    if (s.secret) return;
+  const ids = Object.entries(window.CATALOG.SKINS).filter(([, s]) => !s.secret);
+  // pyramid base: fewer on the top row, more on the bottom, each row centered
+  const topCount = Math.floor(ids.length / 2);
+  const topRow = document.createElement('div');
+  const bottomRow = document.createElement('div');
+  topRow.className = bottomRow.className = 'pfp-row';
+  grid.appendChild(topRow);
+  grid.appendChild(bottomRow);
+  ids.forEach(([id, s], i) => {
     const btn = document.createElement('button');
     btn.className = 'pfp' + (id === current ? ' sel' : '');
     btn.title = s.name;
@@ -101,7 +108,7 @@ window.renderPfpGrid = (grid) => {
       document.dispatchEvent(new CustomEvent('pfp-change'));
       if (window.SFX && window.SFX.click) window.SFX.click();
     };
-    grid.appendChild(btn);
+    (i < topCount ? topRow : bottomRow).appendChild(btn);
   });
 };
 
