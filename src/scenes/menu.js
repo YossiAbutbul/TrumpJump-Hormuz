@@ -104,6 +104,16 @@ class MenuScene extends Phaser.Scene {
     ];
     this.refreshSkinArrows();
 
+    // touch: swipe left/right across the character area to flip skins on phone
+    let downX = 0, downY = 0;
+    this.input.on('pointerdown', (p) => { downX = p.x; downY = p.y; });
+    const onUp = (p) => {
+      const SS = window.SS;
+      this.onSwipe((p.x - downX) / SS, (p.y - downY) / SS, downY / SS);
+    };
+    this.input.on('pointerup', onUp);
+    this.input.on('pointerupoutside', onUp);
+
     // powerup legend, compact — the JET icon uses the equipped skin's cap
     const skinDef = CATALOG.SKINS[save.skin] || {};
     const capIcon = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
@@ -272,6 +282,16 @@ class MenuScene extends Phaser.Scene {
     if (!this.skinArrows) return;
     const canSwitch = this.ownedSkins().length > 1;
     this.skinArrows.forEach(a => a.setShown(canSwitch));
+  }
+
+  // decide whether a pointer gesture over the character area is a skin swipe.
+  // deltas + start-y are in logical (480×800) units. Only fires for a clearly
+  // horizontal drag above the button stack; ignores taps and vertical scrolls.
+  onSwipe(dx, dy, startY) {
+    if (startY >= 520) return false;                 // keep the button zone tap-only
+    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return false;
+    this.cycleSkin(dx < 0 ? 1 : -1);                 // swipe left → next, right → prev
+    return true;
   }
 
   // switch the equipped skin to the next/previous owned one and refresh visuals
