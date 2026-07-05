@@ -11,7 +11,10 @@ window.CATALOG = {
     cowboy: { name: 'COWBOY TRUMP', price: 2000, dir: 'cowboy', hit: true },
     santa: { name: 'SANTA TRUMP', price: 2500, dir: 'santa', hit: true },
     mummy: { name: 'MUMMY TRUMP', price: 2500, dir: 'mummy', hit: true },
+    vampire: { name: 'VAMPIRE TRUMP', price: 2500, dir: 'vampire', hit: true },
     sumo: { name: 'SUMO TRUMP', price: 3000, dir: 'sumo', hit: true },
+    zombie: { name: 'ZOMBIE TRUMP', price: 3000, dir: 'zombie', hit: true },
+    Catwoman: { name: 'CATWOMAN', price: 3000, dir: 'catwoman', hit: true },
     // e.g. biden: { name: 'SLEEPY JOE', price: 400, dir: 'biden', hit: true },
   },
   MAPS: {
