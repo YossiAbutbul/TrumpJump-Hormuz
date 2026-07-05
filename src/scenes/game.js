@@ -93,6 +93,10 @@ class GameScene extends Phaser.Scene {
     // on-screen size of the standing character's longest extent; every other
     // pose (hit/dying) is scaled to match this so poses never render bigger
     this.idleRenderedMax = this.contentMax(this.skin.idle) * this.pScale;
+    // warm the pose-size cache now (during the scene transition) so the first
+    // jet or death doesn't trigger the measurement mid-run
+    this.poseScale(this.skin.fly);
+    if (this.skin.hit) this.poseScale(this.skin.hit);
     const bw = 42 / this.pScale, bh = 74 / this.pScale;
     this.player.body.setSize(bw, bh)
       .setOffset((src.width - bw) / 2, src.height - bh);
@@ -578,29 +582,39 @@ class GameScene extends Phaser.Scene {
   }
 
   // longest extent of the actual drawn character (non-transparent pixels),
-  // ignoring transparent canvas padding. Cached per texture key.
+  // ignoring transparent canvas padding.
+  //
+  // The result only feeds sprite sizing, so pixel-exact bounds aren't needed:
+  // we scan a downscaled copy (~80px) instead of the full 300×360 image. A
+  // full-res scan costs ~70ms — a visible stall on the first jet/hit of a run;
+  // the small scan is ~1ms. Cached on window so it survives scene restarts and
+  // is computed at most once per texture per session, not once per game.
   contentMax(key) {
-    this._contentMaxCache = this._contentMaxCache || {};
-    if (this._contentMaxCache[key] != null) return this._contentMaxCache[key];
+    const cache = (window.__contentMaxCache = window.__contentMaxCache || {});
+    if (cache[key] != null) return cache[key];
     const img = this.textures.get(key).getSourceImage();
+    const scale = Math.min(1, 80 / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
     const c = document.createElement('canvas');
-    c.width = img.width; c.height = img.height;
+    c.width = w; c.height = h;
     const cx = c.getContext('2d');
-    cx.drawImage(img, 0, 0);
-    const data = cx.getImageData(0, 0, img.width, img.height).data;
-    let minX = img.width, minY = img.height, maxX = 0, maxY = 0, found = false;
-    for (let y = 0; y < img.height; y++) {
-      for (let x = 0; x < img.width; x++) {
-        if (data[(y * img.width + x) * 4 + 3] > 8) {
+    cx.drawImage(img, 0, 0, w, h);
+    const data = cx.getImageData(0, 0, w, h).data;
+    let minX = w, minY = h, maxX = 0, maxY = 0, found = false;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] > 8) {
           found = true;
           if (x < minX) minX = x; if (x > maxX) maxX = x;
           if (y < minY) minY = y; if (y > maxY) maxY = y;
         }
       }
     }
-    const m = found ? Math.max(maxX - minX, maxY - minY)
+    // divide back out of the downscale to get the extent in original pixels
+    const m = found ? Math.max(maxX - minX, maxY - minY) / scale
                     : Math.max(img.width, img.height);
-    this._contentMaxCache[key] = m;
+    cache[key] = m;
     return m;
   }
 
