@@ -90,6 +90,9 @@ class GameScene extends Phaser.Scene {
     const src = this.textures.get(this.skin.idle).getSourceImage();
     this.pScale = 94 / src.height;
     this.player.setScale(this.pScale);
+    // on-screen size of the standing character's longest extent; every other
+    // pose (hit/dying) is scaled to match this so poses never render bigger
+    this.idleRenderedMax = this.contentMax(this.skin.idle) * this.pScale;
     const bw = 42 / this.pScale, bh = 74 / this.pScale;
     this.player.body.setSize(bw, bh)
       .setOffset((src.width - bw) / 2, src.height - bh);
@@ -574,12 +577,39 @@ class GameScene extends Phaser.Scene {
     window.SFX.shield();
   }
 
-  // display scale for a pose: normalise by the largest dimension so a wide
-  // pose (e.g. a sprawled hit/dying frame) renders the character at the same
-  // size as the idle instead of appearing bigger
+  // longest extent of the actual drawn character (non-transparent pixels),
+  // ignoring transparent canvas padding. Cached per texture key.
+  contentMax(key) {
+    this._contentMaxCache = this._contentMaxCache || {};
+    if (this._contentMaxCache[key] != null) return this._contentMaxCache[key];
+    const img = this.textures.get(key).getSourceImage();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const cx = c.getContext('2d');
+    cx.drawImage(img, 0, 0);
+    const data = cx.getImageData(0, 0, img.width, img.height).data;
+    let minX = img.width, minY = img.height, maxX = 0, maxY = 0, found = false;
+    for (let y = 0; y < img.height; y++) {
+      for (let x = 0; x < img.width; x++) {
+        if (data[(y * img.width + x) * 4 + 3] > 8) {
+          found = true;
+          if (x < minX) minX = x; if (x > maxX) maxX = x;
+          if (y < minY) minY = y; if (y > maxY) maxY = y;
+        }
+      }
+    }
+    const m = found ? Math.max(maxX - minX, maxY - minY)
+                    : Math.max(img.width, img.height);
+    this._contentMaxCache[key] = m;
+    return m;
+  }
+
+  // display scale for a pose: match the drawn character to the idle's on-screen
+  // size (by content, not canvas) so a wide sprawled hit/dying frame or a
+  // tightly-cropped image never renders bigger than other characters. The 0.8
+  // factor makes a sprawled pose read a touch smaller than the standing idle.
   poseScale(key) {
-    const s = this.textures.get(key).getSourceImage();
-    return 94 / Math.max(s.width, s.height);
+    return 0.8 * this.idleRenderedMax / this.contentMax(key);
   }
 
   die() {

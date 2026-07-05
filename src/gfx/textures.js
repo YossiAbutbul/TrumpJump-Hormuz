@@ -145,6 +145,56 @@ function buildTextures(scene) {
     ctx.stroke();
   });
 
+  // ---- ELADINIO jet powerup: straw farmer/panama hat (replaces the MAGA cap) ----
+  tex(scene, 'cap-eladinio', 40, 30, (ctx) => {
+    // wide straw brim
+    ctx.fillStyle = '#d8b877';
+    ctx.beginPath();
+    ctx.ellipse(20, 22, 18, 5.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // straw crown
+    ctx.fillStyle = '#e0c074';
+    ctx.beginPath();
+    ctx.moveTo(11, 22);
+    ctx.lineTo(13, 9);
+    ctx.quadraticCurveTo(20, 5, 27, 9);
+    ctx.lineTo(29, 22);
+    ctx.closePath(); ctx.fill();
+    // crown top highlight
+    ctx.fillStyle = '#eed69a';
+    ctx.beginPath();
+    ctx.ellipse(20, 9.5, 7, 2.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // woven straw texture lines on crown
+    ctx.strokeStyle = 'rgba(150,110,40,0.35)';
+    ctx.lineWidth = 0.6;
+    for (let i = 0; i < 3; i++) {
+      const yy = 11 + i * 2.2;
+      ctx.beginPath(); ctx.moveTo(13, yy); ctx.lineTo(27, yy); ctx.stroke();
+    }
+    // cream hat band around the crown base
+    ctx.fillStyle = '#f3ecd6';
+    ctx.beginPath();
+    ctx.moveTo(12, 17); ctx.lineTo(28, 17);
+    ctx.lineTo(28.5, 20.5); ctx.lineTo(11.5, 20.5);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#cfc3a0';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(12, 17.4); ctx.lineTo(28, 17.4); ctx.stroke();
+    // brim + crown outline
+    ctx.strokeStyle = '#a67c34';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(20, 22, 18, 5.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(11, 22);
+    ctx.lineTo(13, 9);
+    ctx.quadraticCurveTo(20, 5, 27, 9);
+    ctx.lineTo(29, 22);
+    ctx.stroke();
+  });
+
   // ---- shield pickup (golden dome) ----
   tex(scene, 'shield', 34, 34, (ctx) => {
     ctx.fillStyle = 'rgba(245,197,66,0.35)';

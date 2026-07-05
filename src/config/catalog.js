@@ -16,6 +16,7 @@ window.CATALOG = {
     mummy: { name: 'MUMMY TRUMP', price: 2500, dir: 'mummy', hit: true },
     sumo: { name: 'SUMO TRUMP', price: 3000, dir: 'sumo', hit: true },
     yohai67: { name: 'YOHAI67', price: 0, dir: 'yohai67', hit: true, secret: true, code: '676767', cap: 'cap-yohai' },
+    eladinio: { name: 'ELADINIO', price: 0, dir: 'eladinio', hit: true, secret: true, code: '314159', cap: 'cap-eladinio' },
     // e.g. biden: { name: 'SLEEPY JOE', price: 400, dir: 'biden', hit: true },
   },
   MAPS: {
