@@ -79,6 +79,16 @@ Interested in acquiring, licensing, white-labeling, or partnering on Trump Jump?
 
 ---
 
+## 👥 Contributors
+
+- [**@MayaKatan**](https://github.com/MayaKatan) (Maya Katan) — design & coding 🎨💻
+
+## 🙏 Acknowledgments
+
+Big thanks to [**@Eladharel1**](https://github.com/Eladharel1) (Elad Harel) for helping QA the game and hunt down bugs. 🐛
+
+---
+
 ## ⚖️ Disclaimer
 
 Trump Jump is a work of **satire and parody** created for entertainment. It is not affiliated with, endorsed by, or sponsored by any political figure, campaign, or organization. All characters are caricatures.
