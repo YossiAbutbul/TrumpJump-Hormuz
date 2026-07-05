@@ -1,6 +1,6 @@
 # TRUMP JUMP: Strait of Hormuz
 
-**The internet's most tremendous arcade climber. Jump higher. Dodge missiles. Win bigly.**
+**The internet's most TREMENDOUS arcade climber. Jump higher. Dodge missiles. Win bigly.**
 
 ![Trump Jump - Strait of Hormuz](assets/brand/og.jpg)
 
