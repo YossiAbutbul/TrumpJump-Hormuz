@@ -203,19 +203,52 @@ class MenuScene extends Phaser.Scene {
     return Object.keys(CATALOG.SKINS).filter(k => save.skins.includes(k));
   }
 
-  // circular ‹ / › button flanking the character
+  // gold chevron button flanking the character (dir -1 = left, +1 = right)
   makeSkinArrow(x, y, dir) {
     const cont = this.add.container(x, y).setDepth(6);
-    const bg = this.add.circle(0, 0, 20, 0x2b3a5e)
-      .setStrokeStyle(3, 0xffffff, 0.75)
+
+    // soft gold halo behind the disc
+    const glow = this.add.circle(0, 0, 26, 0xf5c542, 0.16);
+    cont.add(glow);
+
+    // dark disc with a gold rim
+    const bg = this.add.circle(0, 0, 21, 0x141a33, 0.92)
+      .setStrokeStyle(3, 0xf5c542, 0.95)
       .setInteractive({ useHandCursor: true });
     cont.add(bg);
-    cont.add(this.add.text(dir < 0 ? -1 : 1, 0, dir < 0 ? '‹' : '›', {
-      fontFamily: FONT, fontSize: '30px', color: '#ffffff',
-    }).setOrigin(0.5));
-    bg.on('pointerover', () => cont.setScale(1.1));
-    bg.on('pointerout', () => cont.setScale(1));
-    bg.on('pointerup', () => this.cycleSkin(dir));
+
+    // crisp double-stroke chevron pointing outward
+    const s = dir < 0 ? -1 : 1;
+    const draw = (g, color, w) => {
+      g.lineStyle(w, color, 1);
+      g.beginPath();
+      g.moveTo(s * -4, -8);
+      g.lineTo(s * 5, 0);
+      g.lineTo(s * -4, 8);
+      g.strokePath();
+    };
+    const chevron = this.add.graphics();
+    draw(chevron, 0x8a5a10, 6);   // subtle darker underlay for depth
+    draw(chevron, 0xffe9a8, 4);   // bright gold chevron
+    cont.add(chevron);
+
+    // gentle idle: halo breathes and the button nudges outward, hinting "tap me"
+    this.tweens.add({
+      targets: glow, alpha: 0.32, scale: 1.18, duration: 1100,
+      yoyo: true, repeat: -1, ease: 'Sine.inOut',
+    });
+    this.tweens.add({
+      targets: cont, x: x + s * 4, duration: 1100,
+      yoyo: true, repeat: -1, ease: 'Sine.inOut',
+    });
+
+    bg.on('pointerover', () => { bg.setFillStyle(0x24305a, 0.95); cont.setScale(1.12); });
+    bg.on('pointerout', () => { bg.setFillStyle(0x141a33, 0.92); cont.setScale(1); });
+    bg.on('pointerdown', () => cont.setScale(0.9));
+    bg.on('pointerup', () => {
+      cont.setScale(1.12);
+      this.cycleSkin(dir);
+    });
     return cont;
   }
 
