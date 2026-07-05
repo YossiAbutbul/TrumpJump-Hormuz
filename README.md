@@ -35,7 +35,7 @@ Earn coins every run and spend them on real progression:
 - 👤 **Character skins** - THE DONALD, plus a full wardrobe: **Disco King, Cowboy, Santa, Mummy, Sumo**… and secret **friend-code** unlocks
 - 🚢 **Fleets** - Classic, Gold, Stealth, Navy, Crimson
 - 🌅 **Map themes** - Sunset Gulf, Midnight Raid, Desert Haze, Dawn Patrol, Arctic Front
-- ⬆️ **Power-up upgrades** - level up your Jet, Shield, and Magnet (6 levels each)
+- ⬆️ **Power-up upgrades** - level up your Jet, Shield, and Magnet (8 levels each)
 
 ### Compete & keep your progress
 - 🏆 **Global leaderboard** - one-tap Google sign-in and battle the world for the top spot
@@ -76,6 +76,16 @@ Ideal for **acquisition, licensing, white-labeling, ad-network integration, or b
 Interested in acquiring, licensing, white-labeling, or partnering on Trump Jump?
 
 **Contact:** abyossi22@gmail.com
+
+---
+
+## 👥 Contributors
+
+- [**@MayaKatan**](https://github.com/MayaKatan) (Maya Katan) — design & coding 🎨💻
+
+## 🙏 Acknowledgments
+
+Big thanks to [**@Eladharel1**](https://github.com/Eladharel1) (Elad Harel) for helping QA the game and hunt down bugs. 🐛
 
 ---
 
