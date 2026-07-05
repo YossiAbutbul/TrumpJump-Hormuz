@@ -251,17 +251,14 @@ class MenuScene extends Phaser.Scene {
       this.cycleSkin(dir);
     });
 
-    // enabled = live gold button; disabled = dimmed, static, non-interactive
-    cont.setEnabled = (on) => {
-      cont.enabled = on;
-      cont.setAlpha(on ? 1 : 0.28);
-      bg.setStrokeStyle(3, on ? 0xf5c542 : 0x6b7390, on ? 0.95 : 0.8);
+    // shown = live gold button; hidden = gone entirely (input + idle paused)
+    cont.setShown = (on) => {
+      cont.setVisible(on);
       if (on) {
         bg.setInteractive({ useHandCursor: true });
         idle.forEach(t => t.resume());
       } else {
         bg.disableInteractive();
-        bg.setFillStyle(0x141a33, 0.92);
         idle.forEach(t => t.pause());
         cont.x = x;          // undo any mid-tween nudge
         cont.setScale(1);
@@ -270,11 +267,11 @@ class MenuScene extends Phaser.Scene {
     return cont;
   }
 
-  // arrows only work when there is more than one owned skin to cycle through
+  // arrows only appear when there is more than one owned skin to cycle through
   refreshSkinArrows() {
     if (!this.skinArrows) return;
     const canSwitch = this.ownedSkins().length > 1;
-    this.skinArrows.forEach(a => a.setEnabled(canSwitch));
+    this.skinArrows.forEach(a => a.setShown(canSwitch));
   }
 
   // switch the equipped skin to the next/previous owned one and refresh visuals
