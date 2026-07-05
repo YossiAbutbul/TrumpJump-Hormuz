@@ -204,14 +204,14 @@ class ShopScene extends Phaser.Scene {
       this.rows.add(this.add.text(150, y + 48, up.desc, {
         fontFamily: 'Arial', fontSize: '13px', color: '#c9a97f',
       }));
-      // level pips (6 levels)
-      for (let p = 0; p < 6; p++) {
+      // level pips (8 levels)
+      for (let p = 0; p < 8; p++) {
         this.rows.add(this.add.circle(156 + p * 18, y + 76, 6,
           p < lvl ? 0xf5c542 : 0x3a425f));
       }
 
       let btn;
-      if (lvl >= 6) {
+      if (lvl >= 8) {
         btn = uiButton(this, this.W - 90, y + 48, 110, 44, 'MAX',
           null, { color: 0x2e7d32, size: 18, disabled: true });
       } else {

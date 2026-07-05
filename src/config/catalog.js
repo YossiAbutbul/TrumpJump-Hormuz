@@ -77,5 +77,5 @@ window.CATALOG = {
     dome: { name: 'GOLDEN DOME', desc: '+1.8s shield per level', icon: 'shield' },
     magnet: { name: 'MONEY MAGNET', desc: '+1.5s magnet per level', icon: 'magnet' },
   },
-  UPGRADE_COST: [150, 400, 900, 1600, 2800, 4500],
+  UPGRADE_COST: [150, 400, 900, 1600, 2800, 4500, 6800, 10000],
 };
