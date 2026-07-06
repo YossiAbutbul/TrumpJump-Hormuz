@@ -1,0 +1,69 @@
+rules_version = '2';
+
+// Server-side guard for Trump Jump save/leaderboard docs. These run on
+// Google's servers and CANNOT be bypassed from the browser (F12, forged SDK
+// calls, tampered client all still hit these checks).
+//
+// Scope of protection (intentional, for a casual game):
+//   - a user can only read/write sanely-shaped data in their OWN doc
+//   - no other user's doc can be written
+//   - absurd one-shot values (bank = 999999999, best = 999999) are rejected
+//   - NO personal data (email) is stored here, so the public leaderboard read
+//     cannot leak PII
+// NOT protected (accepted residual risk; would need Cloud Functions to close):
+//   - a user forging their OWN cosmetic items/score *within* these caps. This
+//     only affects their own account, never other players.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+
+      // ---- believable ceilings (tune to your real game) --------------
+      function maxBank() { return 10000000; }  // 10M lifetime coin cap
+      function maxBest() { return 50000;    }  // plausible top score ceiling
+
+      function isOwner() { return request.auth != null && request.auth.uid == uid; }
+      function d()       { return request.resource.data; }
+      function oldBest() { return resource == null ? 0 : resource.data.get('best', 0); }
+
+      // only these keys may exist on the doc. NOTE: 'email' is deliberately
+      // absent — storing it here + public read = PII leak. Do not re-add it.
+      function fieldsOk() {
+        return d().keys().hasOnly([
+          'bank','best','bestUid','maps','ships','skins','up',
+          'ship','map','skin','pfp','username','updatedAt'
+        ]);
+      }
+
+      // wallet: whole number, 0..cap
+      function bankOk() {
+        let b = d().get('bank', 0);
+        return b is int && b >= 0 && b <= maxBank();
+      }
+
+      // high score: whole number, 0..cap, and can only ever rise
+      function bestOk() {
+        let s = d().get('best', 0);
+        return s is int && s >= 0 && s <= maxBest() && s >= oldBest();
+      }
+
+      // light type guards so one field can't be smuggled in as another
+      function typesOk() {
+        return d().get('maps',  []).size() >= 0
+            && d().get('ships', []).size() >= 0
+            && d().get('skins', []).size() >= 0
+            && (!('username' in d()) || (d().username is string && d().username.size() <= 16))
+            && (!('pfp' in d()) || d().pfp is string);
+      }
+
+      allow read: if true;                       // leaderboard is public (no PII stored)
+      allow create, update: if isOwner()
+                            && fieldsOk()
+                            && bankOk()
+                            && bestOk()
+                            && typesOk();
+      allow delete: if false;
+    }
+  }
+}

@@ -53,7 +53,7 @@ if (!configured) {
     const blob = window.SAVE.cloudBlob();
     try {
       await setDoc(doc(db, 'users', state.user.uid), {
-        ...blob, email: state.user.email, updatedAt: serverTimestamp(),
+        ...blob, updatedAt: serverTimestamp(),
       }, { merge: true });
       state.profile = { ...(state.profile || {}), ...blob };
     } catch (e) { console.warn('save push failed', e); }
@@ -97,7 +97,7 @@ if (!configured) {
       if (!state.user) return;
       name = String(name).trim().slice(0, 16) || 'player';
       await setDoc(doc(db, 'users', state.user.uid), {
-        username: name, email: state.user.email, updatedAt: serverTimestamp(),
+        username: name, updatedAt: serverTimestamp(),
       }, { merge: true });
       state.profile = { ...(state.profile || {}), username: name };
       emit();
