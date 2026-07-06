@@ -195,6 +195,45 @@ function buildTextures(scene) {
     ctx.stroke();
   });
 
+  // ---- YARIN NO APPENDIX jet powerup: a stray appendix he picks up
+  // (replaces the MAGA cap). Drawn as a fleshy tapering tube hanging off a
+  // little pouch of cecum. ----
+  tex(scene, 'cap-yarin', 40, 30, (ctx) => {
+    // cecum: the pouch of large intestine the appendix dangles from
+    ctx.fillStyle = '#e2938a';
+    ctx.beginPath();
+    ctx.ellipse(20, 8, 13, 6.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // cecum sheen
+    ctx.fillStyle = '#f2b6ac';
+    ctx.beginPath();
+    ctx.ellipse(16.5, 6, 6, 2.6, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // appendix body: overlapping circles of shrinking radius trace a curved,
+    // tapering worm. Overlap makes the fills merge into one smooth tube (no
+    // internal seams), which per-segment strokes would ruin — so no outline here.
+    const seg = [
+      [22, 12.5, 4.3],
+      [24, 16, 3.7],
+      [21.5, 19.5, 3.1],
+      [23.5, 23, 2.4],
+      [22.5, 26.5, 1.6],
+    ];
+    ctx.fillStyle = '#dd8078';
+    seg.forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); });
+    // glossy highlight running down the near side
+    ctx.fillStyle = 'rgba(245,184,174,0.85)';
+    seg.forEach(([x, y, r]) => { ctx.beginPath(); ctx.arc(x - 1.1, y - 0.7, r * 0.42, 0, Math.PI * 2); ctx.fill(); });
+
+    // cecum outline for definition
+    ctx.strokeStyle = '#b85c55';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(20, 8, 13, 6.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+
   // ---- shield pickup (golden dome) ----
   tex(scene, 'shield', 34, 34, (ctx) => {
     ctx.fillStyle = 'rgba(245,197,66,0.35)';
