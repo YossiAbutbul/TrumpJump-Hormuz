@@ -21,6 +21,7 @@ window.CATALOG = {
     yohai67: { name: 'YOHAI67', price: 0, dir: 'yohai67', hit: true, secret: true, code: '676767', cap: 'cap-yohai' },
     eladinio: { name: 'ELADINIO', price: 0, dir: 'eladinio', hit: true, secret: true, code: '314159', cap: 'cap-eladinio' },
     yarin: { name: 'YARIN NO APPENDIX', price: 0, dir: 'yarin', hit: true, secret: true, code: '268996', cap: 'cap-yarin' },
+    lihi: { name: 'LIHI', price: 0, dir: 'lihi', hit: true, secret: true, code: '555555', cap: 'cap-lihi' },
     // e.g. biden: { name: 'SLEEPY JOE', price: 400, dir: 'biden', hit: true },
   },
   MAPS: {

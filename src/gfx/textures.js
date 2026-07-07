@@ -234,6 +234,48 @@ function buildTextures(scene) {
     ctx.stroke();
   });
 
+  // ---- LIHI jet powerup: chocolate bar with the wrapper half peeled
+  // (replaces the MAGA cap) ----
+  tex(scene, 'cap-lihi', 40, 30, (ctx) => {
+    // exposed chocolate slab (top half)
+    ctx.fillStyle = '#4a2a16';
+    rr(ctx, 6, 2, 28, 16, 2); ctx.fill();
+    ctx.strokeStyle = '#2e1a0c';
+    ctx.lineWidth = 1;
+    rr(ctx, 6, 2, 28, 16, 2); ctx.stroke();
+    // molded squares sit proud of the slab
+    ctx.fillStyle = '#6b3d1e';
+    [[8, 4], [17, 4], [26, 4], [8, 10.5], [17, 10.5], [26, 10.5]].forEach(([x, y]) => {
+      rr(ctx, x, y, 6.5, 4.8, 1); ctx.fill();
+    });
+    // sheen on the top row of squares
+    ctx.fillStyle = 'rgba(255, 226, 189, 0.3)';
+    [[8, 4], [17, 4], [26, 4]].forEach(([x, y]) => {
+      rr(ctx, x + 0.8, y + 0.8, 2.6, 1.6, 0.8); ctx.fill();
+    });
+
+    // torn foil edge poking out above the wrapper
+    ctx.fillStyle = '#d9dde2';
+    ctx.beginPath();
+    ctx.moveTo(5, 21);
+    for (let x = 5; x < 35; x += 5) {
+      ctx.lineTo(x + 2.5, 16.5);
+      ctx.lineTo(x + 5, 21);
+    }
+    ctx.closePath(); ctx.fill();
+
+    // wrapper hugging the bottom third
+    ctx.fillStyle = '#8a2f7a';
+    rr(ctx, 5, 20, 30, 9, 2); ctx.fill();
+    ctx.fillStyle = '#a94b97';
+    rr(ctx, 5, 20, 30, 3, 2); ctx.fill();
+    // wrapper label
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 7px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('LIHI', 20, 27.5);
+  });
+
   // ---- shield pickup (golden dome) ----
   tex(scene, 'shield', 34, 34, (ctx) => {
     ctx.fillStyle = 'rgba(245,197,66,0.35)';
