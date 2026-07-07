@@ -90,12 +90,19 @@ class GameScene extends Phaser.Scene {
     const src = this.textures.get(this.skin.idle).getSourceImage();
     this.pScale = 94 / src.height;
     this.player.setScale(this.pScale);
-    // on-screen size of the standing character's longest extent; every other
-    // pose (hit/dying) is scaled to match this so poses never render bigger
+    // on-screen size of the standing character's longest extent; the hit/dying
+    // pose is scaled to match this so it never renders bigger
     this.idleRenderedMax = this.contentMax(this.skin.idle) * this.pScale;
-    // warm the pose-size cache now (during the scene transition) so the first
-    // jet or death doesn't trigger the measurement mid-run
-    this.poseScale(this.skin.fly);
+    // fly pose: keep the body/head the same size as the idle by matching the
+    // dimension the pose does NOT extend. Raised hands stretch the content
+    // height, spread arms stretch the width — max() picks the un-extended
+    // dimension, so the limbs overflow past the idle silhouette while the
+    // head stays aligned (instead of the whole character shrinking).
+    // (These contentBox calls also warm the pixel-scan cache now, during the
+    // scene transition, so the first jet doesn't measure mid-run.)
+    const idleBox = this.contentBox(this.skin.idle);
+    const flyBox = this.contentBox(this.skin.fly);
+    this.flyScale = this.pScale * Math.max(idleBox.w / flyBox.w, idleBox.h / flyBox.h);
     if (this.skin.hit) this.poseScale(this.skin.hit);
     const bw = 42 / this.pScale, bh = 74 / this.pScale;
     this.player.body.setSize(bw, bh)
@@ -487,7 +494,7 @@ class GameScene extends Phaser.Scene {
     this.burst.explode(32, this.player.x, this.player.y + 24);
     this.cameras.main.shake(140, 0.003);
     this.tweens.killTweensOf(this.player);
-    const fs = this.poseScale(this.skin.fly);
+    const fs = this.flyScale;
     this.player.setScale(fs * 0.86, fs * 1.2);
     this.tweens.add({
       targets: this.player, scaleX: fs, scaleY: fs,
@@ -590,7 +597,14 @@ class GameScene extends Phaser.Scene {
   // the small scan is ~1ms. Cached on window so it survives scene restarts and
   // is computed at most once per texture per session, not once per game.
   contentMax(key) {
-    const cache = (window.__contentMaxCache = window.__contentMaxCache || {});
+    const b = this.contentBox(key);
+    return Math.max(b.w, b.h);
+  }
+
+  // content bounding box (width/height of the drawn pixels) in original-image
+  // pixels; same downscaled-scan + session cache scheme as described above.
+  contentBox(key) {
+    const cache = (window.__contentBoxCache = window.__contentBoxCache || {});
     if (cache[key] != null) return cache[key];
     const img = this.textures.get(key).getSourceImage();
     const scale = Math.min(1, 80 / Math.max(img.width, img.height));
@@ -611,11 +625,11 @@ class GameScene extends Phaser.Scene {
         }
       }
     }
-    // divide back out of the downscale to get the extent in original pixels
-    const m = found ? Math.max(maxX - minX, maxY - minY) / scale
-                    : Math.max(img.width, img.height);
-    cache[key] = m;
-    return m;
+    // divide back out of the downscale to get the extents in original pixels
+    const b = found ? { w: (maxX - minX) / scale, h: (maxY - minY) / scale }
+                    : { w: img.width, h: img.height };
+    cache[key] = b;
+    return b;
   }
 
   // display scale for a pose: match the drawn character to the idle's on-screen
