@@ -18,6 +18,7 @@ class MenuScene extends Phaser.Scene {
     buildShipTextures(this, save.ship);
     buildFaceTextures(this); // circular profile-picture avatars
     window.VOICE.init(this);
+    window.SFX.initFiles(this); // optional assets/sfx/*.mp3 replacements
 
     // resolve the equipped skin's textures; fall back to the default trump skin
     // if the saved id is unknown (e.g. removed from the catalog)

@@ -26,36 +26,80 @@ function tex(scene, key, w, h, draw) {
 function buildTextures(scene) {
   // player skins are PNG art loaded in MenuScene.preload (assets/skins/<id>/).
 
-  // ---- oil barrels (breakable platform) ----
+  // ---- pontoon bridge segment (breakable platform: sinks after one bounce).
+  // Wooden plank deck resting on floating drums. ----
   tex(scene, 'barrels', 96, 32, (ctx) => {
+    // floating drums under the deck
     for (let i = 0; i < 3; i++) {
-      const x = 2 + i * 31;
-      ctx.fillStyle = '#c96a2a';
-      rr(ctx, x, 6, 28, 25, 3); ctx.fill();
-      ctx.fillStyle = '#a4531e';
-      ctx.fillRect(x, 12, 28, 3);
-      ctx.fillRect(x, 21, 28, 3);
-      ctx.fillStyle = '#e08a44';
+      const x = 16 + i * 32;
+      ctx.fillStyle = '#d6d2c6';
       ctx.beginPath();
-      ctx.ellipse(x + 14, 6, 14, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, 22, 13, 8.5, 0, 0, Math.PI * 2);
       ctx.fill();
+      // blue bottom band, clipped to the drum
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(x, 22, 13, 8.5, 0, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = '#2f6fb5';
+      ctx.fillRect(x - 13, 24, 26, 8);
+      ctx.restore();
+      ctx.strokeStyle = '#8f887c';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(x, 22, 13, 8.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
     }
+    // plank deck on top
+    ctx.fillStyle = '#b98038';
+    rr(ctx, 0, 4, 96, 10, 3); ctx.fill();
+    // top-edge sunlight
+    ctx.fillStyle = 'rgba(255,230,180,0.45)';
+    rr(ctx, 0, 4, 96, 3, 3); ctx.fill();
+    // plank seams
+    ctx.strokeStyle = '#7e5620';
+    ctx.lineWidth = 1;
+    for (let x = 12; x < 96; x += 12) {
+      ctx.beginPath(); ctx.moveTo(x, 4.5); ctx.lineTo(x, 13.5); ctx.stroke();
+    }
+    // deck outline
+    ctx.strokeStyle = '#6e4a1e';
+    ctx.lineWidth = 1.2;
+    rr(ctx, 0, 4, 96, 10, 3); ctx.stroke();
   });
 
-  // ---- buoy (narrow platform) ----
-  tex(scene, 'buoy', 48, 46, (ctx) => {
-    ctx.fillStyle = '#e2682c';
+  // ---- buoy: rubber duck floating on the water (narrow platform) ----
+  tex(scene, 'buoy', 52, 46, (ctx) => {
+    // body
+    ctx.fillStyle = '#f7c930';
     ctx.beginPath();
-    ctx.moveTo(24, 4); ctx.lineTo(40, 34); ctx.lineTo(8, 34);
+    ctx.ellipse(26, 32, 20, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // tail flick
+    ctx.beginPath();
+    ctx.moveTo(44, 30); ctx.quadraticCurveTo(52, 22, 45, 20);
+    ctx.quadraticCurveTo(47, 26, 42, 28);
     ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#f5f2ea';
-    ctx.fillRect(12, 22, 24, 6);
-    ctx.fillStyle = '#3a424f';
-    rr(ctx, 4, 34, 40, 10, 4); ctx.fill();
-    // light
-    ctx.fillStyle = '#ffe95e';
+    // head
+    ctx.beginPath(); ctx.arc(13, 16, 10, 0, Math.PI * 2); ctx.fill();
+    // beak
+    ctx.fillStyle = '#e8762c';
     ctx.beginPath();
-    ctx.arc(24, 4, 4, 0, Math.PI * 2);
+    ctx.ellipse(3.5, 18, 5, 3, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+    // eye
+    ctx.fillStyle = '#222222';
+    ctx.beginPath(); ctx.arc(11, 13, 1.8, 0, Math.PI * 2); ctx.fill();
+    // wing
+    ctx.strokeStyle = '#d8a516';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(28, 32, 9, 5, -0.2, 0.4, Math.PI * 1.1);
+    ctx.stroke();
+    // belly shade at the waterline
+    ctx.fillStyle = 'rgba(160,110,10,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(26, 38, 18, 4.5, 0, 0, Math.PI);
     ctx.fill();
   });
 
@@ -303,6 +347,18 @@ function buildTextures(scene) {
   tex(scene, 'aura', 96, 96, (ctx) => {
     for (let i = 0; i < 3; i++) {
       ctx.strokeStyle = `rgba(245,197,66,${0.5 - i * 0.15})`;
+      ctx.lineWidth = 3 - i;
+      ctx.beginPath();
+      ctx.arc(48, 48, 38 + i * 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  });
+
+  // cyan variant for the brief flight-end grace shield, so it reads as part
+  // of the jet landing rather than a GOLDEN DOME pickup
+  tex(scene, 'aura-jet', 96, 96, (ctx) => {
+    for (let i = 0; i < 3; i++) {
+      ctx.strokeStyle = `rgba(102,214,255,${0.5 - i * 0.15})`;
       ctx.lineWidth = 3 - i;
       ctx.beginPath();
       ctx.arc(48, 48, 38 + i * 3, 0, Math.PI * 2);

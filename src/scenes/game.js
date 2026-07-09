@@ -41,6 +41,7 @@ class GameScene extends Phaser.Scene {
     this.flying = false;
     this.flyUntil = 0;
     this.shieldUntil = 0;
+    this.shieldOn = false;
     this.magnetUntil = 0;
     this.coinCount = 0;
     this.maxMeters = 0;
@@ -127,6 +128,9 @@ class GameScene extends Phaser.Scene {
     water.body.checkCollision.right = false;
 
     // --- particles ---
+    // exiting to the menu mid-flight must not leave the jet loop playing
+    this.events.once('shutdown', () => window.SFX.jetStop());
+
     this.jetFlame = this.add.particles(0, 0, 'flame', {
       speed: { min: 200, max: 360 }, angle: { min: 74, max: 106 },
       scale: { start: 2.2 * TS, end: 0 }, lifespan: 460, quantity: 4,
@@ -221,6 +225,9 @@ class GameScene extends Phaser.Scene {
       this.saveData.muted = !this.saveData.muted;
       window.SAVE.save();
       t.setText(this.saveData.muted ? '🔇' : '🔊');
+      // the jet loop runs across frames — sync it with the new mute state
+      if (this.saveData.muted) window.SFX.jetStop();
+      else if (this.flying && !this.paused) window.SFX.jetStart();
     });
     mkCircle(this.W - 76, '⏸', () => this.pauseGame());
 
@@ -255,6 +262,7 @@ class GameScene extends Phaser.Scene {
     this.pausedAt = this.time.now;
     this.physics.world.pause();
     this.jetFlame.stop();
+    window.SFX.jetStop();
     this.setPauseUI(true);
   }
 
@@ -292,7 +300,7 @@ class GameScene extends Phaser.Scene {
     this.shieldUntil += shift;
     this.magnetUntil += shift;
     this.physics.world.resume();
-    if (this.flying) this.jetFlame.start();
+    if (this.flying) { this.jetFlame.start(); window.SFX.jetStart(); }
     this.paused = false;
   }
 
@@ -332,7 +340,7 @@ class GameScene extends Phaser.Scene {
     if (type === 'tanker') plat.body.setSize(140 * SS, 14 * SS).setOffset(5 * SS, 12 * SS);
     if (type === 'boat')   plat.body.setSize(96 * SS, 12 * SS).setOffset(7 * SS, 10 * SS);
     if (type === 'barrels') plat.body.setSize(90 * SS, 12 * SS).setOffset(3 * SS, 2 * SS);
-    if (type === 'buoy')   plat.body.setSize(40 * SS, 12 * SS).setOffset(4 * SS, 30 * SS);
+    if (type === 'buoy')   plat.body.setSize(40 * SS, 12 * SS).setOffset(6 * SS, 28 * SS); // duck's back
     if (type === 'boat') {
       // slower so a boat can't drift out of reach during a single jump
       const spd = (35 + 40 * this.difficulty()) * Phaser.Math.FloatBetween(0.8, 1.2);
@@ -452,8 +460,12 @@ class GameScene extends Phaser.Scene {
   // ---------- gameplay events ----------
 
   onLand(plat) {
+    // quack only on a real landing on the duck's back — jumping up through it
+    // can flip to "falling" at the apex while still inside the sprite, which
+    // must not honk; those pass-through bounces get the normal jump blip
+    const onTop = this.player.body.bottom <= plat.body.top + 14;
     this.player.setVelocityY(-560 * this.pace());
-    window.SFX.jump();
+    if (plat.type === 'buoy' && onTop) window.SFX.quack(); else window.SFX.jump();
     this.squash();
     if (plat.type === 'barrels') {
       plat.body.enable = false;
@@ -490,7 +502,12 @@ class GameScene extends Phaser.Scene {
     // clear any missiles already in the air so flight starts clean
     this.missiles.clear(true, true);
     this.player.setTexture(this.skin.fly);
+    // cyan shield ring for the whole flight (and the grace window after) so
+    // the invulnerability is visible; a running GOLDEN DOME keeps its gold ring
+    if (this.time.now >= this.shieldUntil) this.aura.setTexture('aura-jet');
+    this.aura.setVisible(true);
     this.jetFlame.start();
+    window.SFX.jetStart();
     this.burst.explode(32, this.player.x, this.player.y + 24);
     this.cameras.main.shake(140, 0.003);
     this.tweens.killTweensOf(this.player);
@@ -519,7 +536,7 @@ class GameScene extends Phaser.Scene {
       this.startBoost();
     } else if (t === 'shield') {
       this.shieldUntil = this.time.now + this.domeDur;
-      this.aura.setVisible(true);
+      this.aura.setTexture('aura').setVisible(true);
       window.SFX.shield();
       window.VOICE.play(this, 'power');
       this.quote('shield', 1);
@@ -535,10 +552,9 @@ class GameScene extends Phaser.Scene {
     if (this.dead || !obj.active) return;
     const p = this.player;
 
-    // stomp a drone from above: kill it, bounce off, survive.
-    // side/bottom hits (not falling, or not clearly above) still kill.
+    // stomp a drone from above: kill it, bounce off, survive — and keep the
+    // shield if one is running; only side/bottom contact consumes it.
     if (kind === 'drone' && !obj.stomped && !this.flying
-        && this.time.now >= this.shieldUntil
         && p.body.velocity.y > 0 && p.y < obj.y - 4) {
       this.stompDrone(obj);
       return;
@@ -584,8 +600,25 @@ class GameScene extends Phaser.Scene {
 
   breakShield() {
     this.shieldUntil = 0;
+    this.shieldOn = false;
+    this.popShield();
     this.aura.setVisible(false);
     window.SFX.shield();
+  }
+
+  // one-shot flourish when a shield ends (absorbed a hit or timed out):
+  // the ring blows outward and fades, in the shield's own color
+  popShield() {
+    const pop = this.add.image(this.player.x, this.player.y, this.aura.texture.key)
+      .setScale(this.aura.scale).setDepth(11);
+    this.tweens.add({
+      targets: pop, scale: this.aura.scale * 1.8, alpha: 0,
+      duration: 340, ease: 'Quad.out',
+      // ride along with the player — otherwise the ring hangs in the air
+      // while the character keeps moving
+      onUpdate: () => pop.setPosition(this.player.x, this.player.y),
+      onComplete: () => pop.destroy(),
+    });
   }
 
   // longest extent of the actual drawn character (non-transparent pixels),
@@ -695,6 +728,7 @@ class GameScene extends Phaser.Scene {
     window.VOICE.play(this, 'death');
     this.physics.pause();
     this.jetFlame.stop();
+    window.SFX.jetStop();
 
     const save = this.saveData;
     const bonus = Math.floor(this.maxMeters / 20);
@@ -785,16 +819,32 @@ class GameScene extends Phaser.Scene {
         p.setTexture(this.skin.idle);
         p.setScale(this.pScale);
         this.jetFlame.stop();
+        window.SFX.jetStop();
+        // brief landing shield: the boost's leftover momentum still carries you
+        // up faster than you can react, straight into any drone parked above —
+        // an unavoidable insta-death. The existing shield (blinking aura, one
+        // hit) covers that window; a running GOLDEN DOME is left untouched.
+        // cyan ring: jet grace, not GOLDEN DOME (unless a dome is already up)
+        if (time >= this.shieldUntil) this.aura.setTexture('aura-jet');
+        this.shieldUntil = Math.max(this.shieldUntil, time + 1500);
       }
     }
 
-    if (time < this.shieldUntil) {
+    // the ring shows for the whole jet flight (smash-through is active) and
+    // for any running shield; it only blinks when a shield timer is about to
+    // run out — never mid-flight
+    if (this.flying || time < this.shieldUntil) {
+      this.shieldOn = true;
       this.aura.setVisible(true).setPosition(p.x, p.y);
       this.aura.rotation += 0.02 * dt / 16;
-      if (this.shieldUntil - time < 1500) {
+      if (!this.flying && this.shieldUntil - time < 1500) {
         this.aura.setAlpha(Math.sin(time / 80) > 0 ? 1 : 0.25);
       } else this.aura.setAlpha(1);
-    } else this.aura.setVisible(false);
+    } else {
+      // timed out this frame (a broken shield already popped in breakShield)
+      if (this.shieldOn) { this.shieldOn = false; this.popShield(); }
+      this.aura.setVisible(false);
+    }
 
     // magnet pulls nearby coins
     if (time < this.magnetUntil) {
