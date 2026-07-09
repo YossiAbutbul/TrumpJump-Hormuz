@@ -57,6 +57,7 @@ class ShopScene extends Phaser.Scene {
     let dragging = false, lastY = 0;
     const SS = window.SS;
     this.input.on('pointerdown', (p) => {
+      if (this.confirm) return; // confirm dialog open: list is frozen
       if (p.y / SS < this.listTop) return; // ignore drags starting on tabs/header
       dragging = true;
       lastY = p.y;
@@ -70,10 +71,36 @@ class ShopScene extends Phaser.Scene {
       this.clampListScroll();
     });
     this.input.on('wheel', (p, over, dx, dy) => {
-      if (!this.rows) return;
+      if (this.confirm || !this.rows) return;
       this.rows.y -= dy * 0.4;
       this.clampListScroll();
     });
+  }
+
+  // "are you sure?" dialog before spending coins — too many accidental buys.
+  // Full-screen dim blocks the row buttons behind it; scroll is frozen while
+  // open (see the `this.confirm` guards in setupListScroll).
+  confirmBuy(name, price, onConfirm) {
+    if (this.confirm) return;
+    const { W, H } = this;
+    const c = this.add.container(0, 0).setDepth(50);
+    this.confirm = c;
+    c.add(this.add.rectangle(W / 2, H / 2, W, H, 0x05060f, 0.72).setInteractive());
+    const pw = W - 70, ph = 208;
+    const px = 35, py = H / 2 - ph / 2;
+    c.add(uiPanel(this, px, py, pw, ph, { alpha: 0.96 }));
+    c.add(this.add.text(W / 2, py + 44, 'ARE YOU SURE?', {
+      fontFamily: FONT, fontSize: '26px', color: '#f5c542',
+      stroke: '#71301f', strokeThickness: 5,
+    }).setOrigin(0.5));
+    c.add(this.add.text(W / 2, py + 88, `buy ${name} for ${price} coins?`, {
+      fontFamily: 'Arial', fontSize: '16px', color: '#ffe9c9',
+    }).setOrigin(0.5));
+    const close = () => { this.confirm = null; c.destroy(true); };
+    c.add(uiButton(this, W / 2 - 78, py + ph - 50, 128, 48, 'BUY',
+      () => { close(); onConfirm(); }, { size: 18 }));
+    c.add(uiButton(this, W / 2 + 78, py + ph - 50, 128, 48, 'CANCEL',
+      close, { color: 0x2b3a5e, size: 18 }));
   }
 
   clampListScroll() {
@@ -178,14 +205,14 @@ class ShopScene extends Phaser.Scene {
       } else {
         const canAfford = save.bank >= item.price;
         btn = uiButton(this, this.W - 90, y + 48, 110, 44,
-          `BUY ${item.price}`, () => {
+          `BUY ${item.price}`, () => this.confirmBuy(item.name, item.price, () => {
             if (window.SAVE.data.bank < item.price) return;
             window.SAVE.data.bank -= item.price;
             buy(key);
             window.SAVE.save();
             window.SFX.power();
             this.refresh();
-          }, { size: 15, disabled: !canAfford });
+          }), { size: 15, disabled: !canAfford });
       }
       this.rows.add(btn);
     });
@@ -217,14 +244,14 @@ class ShopScene extends Phaser.Scene {
       } else {
         const cost = CATALOG.UPGRADE_COST[lvl];
         btn = uiButton(this, this.W - 90, y + 48, 110, 44,
-          `BUY ${cost}`, () => {
+          `BUY ${cost}`, () => this.confirmBuy(`${up.name} LV${lvl + 1}`, cost, () => {
             if (window.SAVE.data.bank < cost) return;
             window.SAVE.data.bank -= cost;
             window.SAVE.data.up[key]++;
             window.SAVE.save();
             window.SFX.power();
             this.refresh();
-          }, { size: 15, disabled: save.bank < cost });
+          }), { size: 15, disabled: save.bank < cost });
       }
       this.rows.add(btn);
     });
