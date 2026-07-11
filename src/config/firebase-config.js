@@ -198,6 +198,7 @@ window.settingsModal = () => {
   const redeem = document.getElementById('code-redeem');
   const closeBtn = document.getElementById('settings-close');
   const muteBtn = document.getElementById('mute-toggle');
+  const boostBtn = document.getElementById('boost-side-toggle');
   if (!modal || !input) return;
   input.value = '';
   msg.textContent = '';
@@ -218,12 +219,27 @@ window.settingsModal = () => {
     if (window.SFX && window.SFX.click) window.SFX.click();
   };
 
+  const syncBoostSide = () => {
+    if (!boostBtn) return;
+    const s = (window.SAVE && window.SAVE.data.boostSide) || 'right';
+    boostBtn.textContent = s === 'left' ? '🚀 BOOST: LEFT' : '🚀 BOOST: RIGHT';
+  };
+  syncBoostSide();
+  const onBoostSide = () => {
+    if (!window.SAVE) return;
+    window.SAVE.data.boostSide = window.SAVE.data.boostSide === 'left' ? 'right' : 'left';
+    window.SAVE.save();
+    syncBoostSide();
+    if (window.SFX && window.SFX.click) window.SFX.click();
+  };
+
   const cleanup = () => {
     redeem.removeEventListener('click', onRedeem);
     closeBtn.removeEventListener('click', doClose);
     input.removeEventListener('keydown', onKey);
     modal.removeEventListener('click', onBackdrop);
     muteBtn.removeEventListener('click', onMute);
+    if (boostBtn) boostBtn.removeEventListener('click', onBoostSide);
   };
   const doClose = () => { modal.style.display = 'none'; window.setGameInputEnabled(true); cleanup(); };
   const onRedeem = () => {
@@ -239,4 +255,5 @@ window.settingsModal = () => {
   input.addEventListener('keydown', onKey);
   modal.addEventListener('click', onBackdrop);
   muteBtn.addEventListener('click', onMute);
+  if (boostBtn) boostBtn.addEventListener('click', onBoostSide);
 };

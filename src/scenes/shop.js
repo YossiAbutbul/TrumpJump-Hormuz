@@ -20,11 +20,18 @@ class ShopScene extends Phaser.Scene {
       stroke: '#71301f', strokeThickness: 8,
     }).setOrigin(0.5);
 
-    // bank pill
+    // bank pill (right)
     uiPanel(this, W - 152, 20, 132, 44);
     this.add.image(W - 130, 42, 'coin').setScale(TS);
     this.bankText = this.add.text(W - 112, 42, `${save.bank}`, {
       fontFamily: FONT, fontSize: '22px', color: '#f5c542',
+    }).setOrigin(0, 0.5);
+    // Trump Bucks pill (left) — mirrors the bank pill: icon 22px in, value 40px
+    // in, with the bill sized to the coin's width so the padding matches
+    uiPanel(this, 20, 20, 132, 44);
+    this.add.image(42, 42, 'bill').setScale(0.66 * TS);
+    this.billsText = this.add.text(60, 42, `${save.bills || 0}`, {
+      fontFamily: FONT, fontSize: '22px', color: '#8ff0a8',
     }).setOrigin(0, 0.5);
 
     // tabs
@@ -80,7 +87,7 @@ class ShopScene extends Phaser.Scene {
   // "are you sure?" dialog before spending coins — too many accidental buys.
   // Full-screen dim blocks the row buttons behind it; scroll is frozen while
   // open (see the `this.confirm` guards in setupListScroll).
-  confirmBuy(name, price, onConfirm) {
+  confirmBuy(name, price, onConfirm, currency = 'coins') {
     if (this.confirm) return;
     const { W, H } = this;
     const c = this.add.container(0, 0).setDepth(50);
@@ -93,7 +100,7 @@ class ShopScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '26px', color: '#f5c542',
       stroke: '#71301f', strokeThickness: 5,
     }).setOrigin(0.5));
-    c.add(this.add.text(W / 2, py + 88, `buy ${name} for ${price} coins?`, {
+    c.add(this.add.text(W / 2, py + 88, `buy ${name} for ${price} ${currency}?`, {
       fontFamily: 'Arial', fontSize: '16px', color: '#ffe9c9',
     }).setOrigin(0.5));
     const close = () => { this.confirm = null; c.destroy(true); };
@@ -115,6 +122,7 @@ class ShopScene extends Phaser.Scene {
   refresh() {
     const save = window.SAVE.data;
     this.bankText.setText(`${save.bank}`);
+    if (this.billsText) this.billsText.setText(`${save.bills || 0}`);
     Object.entries(this.tabButtons).forEach(([name, btn]) => {
       btn.label.setColor(name === this.tab ? '#f5c542' : '#ffffff');
       btn.setAlpha(name === this.tab ? 1 : 0.75);
@@ -256,9 +264,41 @@ class ShopScene extends Phaser.Scene {
       this.rows.add(btn);
     });
 
-    this.rows.add(this.add.text(this.W / 2, 170 + 3 * 108 + 20,
-      'upgrades make every powerup last longer', {
-        fontFamily: 'Arial', fontSize: '14px', color: '#c9a97f',
+    // consumable launch boost, bought with Trump Bucks (bills) only
+    this.boostRow(3);
+
+    this.rows.add(this.add.text(this.W / 2, 170 + 4 * 108 + 16,
+      'upgrades last longer · LAUNCH PAD is bought with Trump Bucks', {
+        fontFamily: 'Arial', fontSize: '13px', color: '#c9a97f', align: 'center',
       }).setOrigin(0.5));
+  }
+
+  boostRow(i) {
+    const save = window.SAVE.data;
+    const b = CATALOG.STARTUP_BOOST;
+    const y = this.rowPanel(i);
+    this.rows.add(this.add.image(78, y + 48, b.icon).setScale(1.4 * window.TEX_SCALE));
+    this.rows.add(this.add.text(150, y + 18, b.name, {
+      fontFamily: FONT, fontSize: '19px', color: '#ffe9c9',
+    }));
+    this.rows.add(this.add.text(150, y + 44, b.desc, {
+      fontFamily: 'Arial', fontSize: '12px', color: '#c9a97f',
+    }));
+    this.rows.add(this.add.text(150, y + 68,
+      `in stock: ${save.boosts}`, {
+        fontFamily: 'Arial', fontSize: '12px', color: '#c9a97f',
+      }));
+    const canAfford = (save.bills || 0) >= b.priceBills;
+    const priceLabel = `${b.priceBills} BILL${b.priceBills > 1 ? 'S' : ''}`;
+    const btn = uiButton(this, this.W - 90, y + 48, 110, 44, priceLabel, () =>
+      this.confirmBuy(b.name, b.priceBills, () => {
+        if ((window.SAVE.data.bills || 0) < b.priceBills) return;
+        window.SAVE.data.bills -= b.priceBills;
+        window.SAVE.data.boosts = (window.SAVE.data.boosts || 0) + 1;
+        window.SAVE.save();
+        window.SFX.power();
+        this.refresh();
+      }, 'bills'), { color: 0x2e7d32, size: 16, disabled: !canAfford });
+    this.rows.add(btn);
   }
 }

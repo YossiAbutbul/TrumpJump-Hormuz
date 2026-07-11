@@ -7,13 +7,14 @@ window.SAVE = {
   data: null,
   load() {
     const def = {
-      bank: 0, best: 0, bestUid: null,
+      bank: 0, bills: 0, boosts: 0, best: 0, bestUid: null,
       maps: ['sunset'], map: 'sunset',
       ships: ['classic'], ship: 'classic',
       skins: ['trump'], skin: 'trump',
       pfp: 'trump', // chosen profile-picture face
       up: { jet: 0, dome: 0, magnet: 0 },
       muted: false,
+      boostSide: 'right', // launch-button side; 'left' for left-handed players
     };
     let stored = null;
     try { stored = JSON.parse(localStorage.getItem('tj-save') || 'null'); } catch (e) {}
@@ -49,8 +50,9 @@ window.SAVE = {
   cloudBlob() {
     const d = this.data;
     return {
-      bank: d.bank, best: d.best, maps: d.maps, ships: d.ships, skins: d.skins,
-      up: d.up, ship: d.ship, map: d.map, skin: d.skin, pfp: d.pfp,
+      bank: d.bank, bills: d.bills, boosts: d.boosts, best: d.best, maps: d.maps,
+      ships: d.ships, skins: d.skins, up: d.up, ship: d.ship, map: d.map,
+      skin: d.skin, pfp: d.pfp, boostSide: d.boostSide,
     };
   },
 
@@ -61,6 +63,8 @@ window.SAVE = {
     cloud = cloud || {}; // a brand-new account has no cloud doc yet
     const d = this.data;
     d.bank = Math.max(d.bank || 0, cloud.bank || 0);
+    d.bills = Math.max(d.bills || 0, cloud.bills || 0);
+    d.boosts = Math.max(d.boosts || 0, cloud.boosts || 0);
     // best is per-account: only keep the local best if it already belongs to
     // this signed-in user (e.g. an unsynced new record). Otherwise the local
     // best is a guest's or another user's — adopt this account's own best.
@@ -78,6 +82,7 @@ window.SAVE = {
     if (cloud.map && d.maps.includes(cloud.map)) d.map = cloud.map;
     if (cloud.skin && d.skins.includes(cloud.skin)) d.skin = cloud.skin;
     if (cloud.pfp) d.pfp = cloud.pfp;
+    if (cloud.boostSide) d.boostSide = cloud.boostSide;
     this.save();
     return this.data;
   },
@@ -89,6 +94,8 @@ window.SAVE = {
   resetToGuest() {
     const d = this.data;
     d.bank = 0;
+    d.bills = 0;
+    d.boosts = 0;
     d.best = 0;
     d.bestUid = null;
     d.maps = ['sunset']; d.map = 'sunset';

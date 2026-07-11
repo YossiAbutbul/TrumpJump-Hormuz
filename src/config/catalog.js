@@ -84,4 +84,10 @@ window.CATALOG = {
     magnet: { name: 'MONEY MAGNET', desc: '+1.5s magnet per level', icon: 'magnet' },
   },
   UPGRADE_COST: [150, 400, 900, 1600, 2800, 4500, 6800, 10000],
+  // consumable launch boost, bought with Trump Bucks (bills) only. Each charge
+  // lets you tap BOOST in the first 2s of a run to blast off with the jet.
+  STARTUP_BOOST: {
+    name: 'LAUNCH PAD', desc: 'blast off at the run start',
+    icon: 'boost', priceBills: 5,
+  },
 };

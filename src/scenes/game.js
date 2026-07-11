@@ -44,6 +44,7 @@ class GameScene extends Phaser.Scene {
     this.shieldOn = false;
     this.magnetUntil = 0;
     this.coinCount = 0;
+    this.billCount = 0; // rare Trump Bucks collected this run
     this.maxMeters = 0;
     this.nextMilestone = 300;
     this.baseY = H - 150;
@@ -142,6 +143,12 @@ class GameScene extends Phaser.Scene {
       speed: { min: 80, max: 260 }, scale: { start: 1 * TS, end: 0 },
       lifespan: 450, emitting: false,
     }).setDepth(12);
+    // water droplets flung up when a raft breaks the surface and sinks
+    this.splash = this.add.particles(0, 0, 'spark', {
+      speed: { min: 70, max: 200 }, angle: { min: 245, max: 295 },
+      gravityY: 620, scale: { start: 0.9 * TS, end: 0 }, lifespan: 520,
+      tint: [0xffffff, 0xbfe0ff, 0x7fb8e8], emitting: false,
+    }).setDepth(5);
 
     this.aura = this.add.image(0, 0, 'aura').setScale(TS).setDepth(11).setVisible(false);
 
@@ -184,6 +191,57 @@ class GameScene extends Phaser.Scene {
     this.cameras.main.scrollY = 0;
     this.camY = 0;
     window.VOICE.play(this, 'start');
+
+    // LAUNCH PAD: if the player owns boost charges, offer a tap-to-launch button
+    // for the first 2 seconds of the run
+    this.offerStartupBoost();
+  }
+
+  // small icon-only boost button on the right for the first 2s; tapping it
+  // spends one charge and fires the jet. Only one boost per run. Ignored
+  // (charge kept) if the window closes unused.
+  offerStartupBoost() {
+    if (!this.saveData.boosts || this.saveData.boosts <= 0) return;
+    const W = this.W, H = this.H;
+    // lower corner, out of the way of the HUD/controls — big and bright so it
+    // clearly reads as a tappable launch button. Side is a left-handed setting.
+    const onLeft = this.saveData.boostSide === 'left';
+    const bx = onLeft ? 62 : W - 62, by = H - 110;
+    const c = this.add.container(bx, by).setScrollFactor(0).setDepth(41);
+    this.boostBtnX = bx; this.boostBtnY = by;
+    // soft glow ring behind the button
+    const glow = this.add.circle(0, 0, 40, 0x4caf50, 0.22);
+    const bg = this.add.circle(0, 0, 32, 0x2e7d32, 1)
+      .setStrokeStyle(4, 0xaef5be, 0.95);
+    const icon = this.add.image(0, 1, 'boost').setScale(1.05 * window.TEX_SCALE);
+    c.add([glow, bg, icon]);
+    c.setSize(64, 64).setInteractive({ useHandCursor: true });
+    this.boostBtn = c;
+    // a livelier pulse to catch the eye
+    this.tweens.add({ targets: c, scale: 1.16, duration: 340, yoyo: true,
+      repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: glow, alpha: 0.5, scale: 1.15, duration: 620,
+      yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    c.on('pointerdown', () => this.useStartupBoost());
+    // window closes after 2s if unused — the charge is kept for next run
+    this.time.delayedCall(2000, () => this.hideBoostBtn());
+  }
+
+  useStartupBoost() {
+    if (!this.boostBtn || this.flying || this.dead || this.gameOver) return;
+    if (!this.saveData.boosts || this.saveData.boosts <= 0) { this.hideBoostBtn(); return; }
+    this.saveData.boosts--;
+    window.SAVE.save();
+    this.hideBoostBtn();
+    this.startBoost();
+  }
+
+  hideBoostBtn() {
+    if (!this.boostBtn) return;
+    const c = this.boostBtn; this.boostBtn = null;
+    this.tweens.killTweensOf(c);
+    this.tweens.add({ targets: c, alpha: 0, y: c.y + 16, duration: 250,
+      onComplete: () => c.destroy(true) });
   }
 
   buildHud() {
@@ -396,6 +454,9 @@ class GameScene extends Phaser.Scene {
       this.spawnItem(x, y - 55, 'coin');
     }
 
+    // rare Trump Bucks drop — a premium currency, uncommon per platform
+    if (Math.random() < 0.018) this.spawnItem(x, y - 74, 'bill');
+
     if (this.maxMeters > 500 && this.drones.countActive() < 2
         && Math.random() < 0.02 + 0.06 * d) {
       const drone = this.drones.create(
@@ -452,6 +513,11 @@ class GameScene extends Phaser.Scene {
     it.setDepth(6);
     if (type === 'coin') {
       this.tweens.add({ targets: it, scaleX: 0.15 * window.TEX_SCALE, duration: 380, yoyo: true, repeat: -1 });
+    } else if (type === 'bill') {
+      // a rare bill floats higher and sways so it reads as a special pickup
+      it.setDepth(7);
+      this.tweens.add({ targets: it, y: y - 11, duration: 720, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: it, angle: 9, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     } else {
       this.tweens.add({ targets: it, y: y - 8, duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     }
@@ -460,20 +526,70 @@ class GameScene extends Phaser.Scene {
   // ---------- gameplay events ----------
 
   onLand(plat) {
-    // quack only on a real landing on the duck's back — jumping up through it
-    // can flip to "falling" at the apex while still inside the sprite, which
-    // must not honk; those pass-through bounces get the normal jump blip
-    const onTop = this.player.body.bottom <= plat.body.top + 14;
     this.player.setVelocityY(-560 * this.pace());
-    if (plat.type === 'buoy' && onTop) window.SFX.quack(); else window.SFX.jump();
+    // quack is disabled for now — every platform uses the normal jump blip.
+    // the duck still gets its springy squeeze on landing.
+    if (plat.type === 'buoy') this.squashDuck(plat);
+    window.SFX.jump();
     this.squash();
-    if (plat.type === 'barrels') {
-      plat.body.enable = false;
+    if (plat.type === 'barrels') this.breakRaft(plat);
+  }
+
+  // rubber-duck bounce: squash flat and wide, then spring back with a little
+  // overshoot so it reads as elastic rubber taking the player's weight
+  squashDuck(plat) {
+    const TS = window.TEX_SCALE;
+    this.tweens.killTweensOf(plat);
+    plat.setScale(TS * 1.18, TS * 0.72);
+    this.tweens.add({
+      targets: plat, scaleX: TS, scaleY: TS, duration: 280, ease: 'Back.out',
+    });
+  }
+
+  // a bounced raft shatters: the deck planks kick up, the drums tumble apart
+  // and sink, and the surface throws a spray of droplets. Reads as the raft
+  // giving way under the player instead of just sliding away.
+  breakRaft(plat) {
+    const TS = window.TEX_SCALE;
+    plat.body.enable = false;
+    plat.setVisible(false);
+    const cx = plat.x, cy = plat.y;
+    window.SFX.splash();
+    this.splash.explode(18, cx, cy + 8 * TS);
+
+    // three drums tumble outward and sink under the surface
+    for (let i = 0; i < 3; i++) {
+      const dir = i - 1; // -1, 0, +1
+      const chunk = this.add.image(cx + dir * 32 * TS, cy + 8 * TS, 'barrel-chunk')
+        .setScale(TS).setDepth(3);
       this.tweens.add({
-        targets: plat, y: plat.y + 60, alpha: 0, angle: 12, duration: 500,
-        onComplete: () => plat.destroy(),
+        targets: chunk,
+        x: chunk.x + dir * 55 + Phaser.Math.Between(-12, 12),
+        y: chunk.y + 95 + Phaser.Math.Between(0, 30),
+        angle: dir * 150 + Phaser.Math.Between(-40, 40),
+        alpha: 0, duration: 640, ease: 'Quad.in',
+        onComplete: () => chunk.destroy(),
       });
     }
+
+    // deck planks pop up first, then fall back and splash down
+    for (let i = 0; i < 3; i++) {
+      const dir = i - 1;
+      const plank = this.add.image(cx + dir * 26 * TS, cy - 4 * TS, 'plank-chunk')
+        .setScale(TS).setDepth(6).setAngle(Phaser.Math.Between(-8, 8));
+      this.tweens.add({
+        targets: plank,
+        x: plank.x + dir * 42, y: cy - 26 - Phaser.Math.Between(0, 14),
+        angle: dir * 80, duration: 220, ease: 'Quad.out',
+        onComplete: () => this.tweens.add({
+          targets: plank, y: cy + 85, angle: plank.angle + dir * 130,
+          alpha: 0, duration: 460, ease: 'Quad.in',
+          onComplete: () => plank.destroy(),
+        }),
+      });
+    }
+
+    plat.destroy();
   }
 
   onSpring(s) {
@@ -525,6 +641,7 @@ class GameScene extends Phaser.Scene {
   collect(item) {
     if (this.dead) return;
     const t = item.itemType;
+    const ix = item.x, iy = item.y; // remember where it was picked up
     this.burst.explode(14, item.x, item.y);
     item.destroy();
     if (t === 'coin') {
@@ -532,6 +649,12 @@ class GameScene extends Phaser.Scene {
       window.SFX.coin();
       this.coinText.setText(`${this.coinCount}`);
       if (this.coinCount % 10 === 0) this.quote('coins', 1);
+    } else if (t === 'bill') {
+      this.billCount++;
+      window.SFX.power(); // richer chime than a coin — it's a rare pickup
+      window.VOICE.play(this, 'power');
+      this.billPop(ix, iy); // "+1 bill" flourish at the pickup spot (no total)
+      this.quote('coins', 1);
     } else if (t === 'cap') {
       this.startBoost();
     } else if (t === 'shield') {
@@ -546,6 +669,25 @@ class GameScene extends Phaser.Scene {
       window.VOICE.play(this, 'power');
       this.quote('magnet', 1);
     }
+  }
+
+  // "+1 bill" flourish that pops right where the player grabbed the bill —
+  // signals a rare pickup without ever showing the running total mid-game
+  billPop(x, y) {
+    const TS = window.TEX_SCALE;
+    const icon = this.add.image(x, y, 'bill').setScale(0.2 * TS).setDepth(15);
+    const txt = this.add.text(x, y - 22, '+1', {
+      fontFamily: FONT, fontSize: '22px', color: '#9dfcb4',
+      stroke: '#0e3b22', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(15).setScale(0);
+    // punch in with an overshoot so it clearly pops at the pickup point
+    this.tweens.add({ targets: icon, scale: 1.05 * TS, duration: 260, ease: 'Back.out' });
+    this.tweens.add({ targets: txt, scale: 1, duration: 260, ease: 'Back.out' });
+    // hold a beat, then float up and fade out
+    this.tweens.add({
+      targets: [icon, txt], y: '-=52', alpha: 0, duration: 720, delay: 360,
+      ease: 'Cubic.in', onComplete: () => { icon.destroy(); txt.destroy(); },
+    });
   }
 
   onHazard(obj, kind) {
@@ -734,6 +876,7 @@ class GameScene extends Phaser.Scene {
     const bonus = Math.floor(this.maxMeters / 20);
     const earned = this.coinCount + bonus;
     save.bank += earned;
+    save.bills = (save.bills || 0) + this.billCount; // rare Trump Bucks
     const score = this.maxMeters;
     const isBest = score > save.best;
     if (isBest) save.best = score;
@@ -742,10 +885,13 @@ class GameScene extends Phaser.Scene {
     window.SAVE.flush();
     if (window.FB && window.FB.user) window.FB.submitScore(score);
 
+    // an extra stats line (Trump Bucks) needs more room, so grow the panel and
+    // push the best line + buttons down to keep everything clear
+    const extra = this.billCount > 0 ? 34 : 0;
     const W = this.W, H = this.H;
     this.add.rectangle(W / 2, H / 2, W, H, 0x090b18, 0.7)
       .setScrollFactor(0).setDepth(30);
-    uiPanel(this, W / 2 - 190, H / 2 - 240, 380, 480, { alpha: 0.9 })
+    uiPanel(this, W / 2 - 190, H / 2 - 240, 380, 480 + extra, { alpha: 0.9 })
       .setScrollFactor(0).setDepth(30);
 
     this.add.text(W / 2, H / 2 - 185, "YOU'RE FIRED!", {
@@ -764,20 +910,29 @@ class GameScene extends Phaser.Scene {
       stroke: '#71301f', strokeThickness: 4, align: 'center', lineSpacing: 12,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(31);
 
-    this.add.text(W / 2, H / 2 + 42,
+    // Trump Bucks earned this run get their own green highlight line, centered
+    if (this.billCount > 0) {
+      this.add.text(W / 2, H / 2 + 20,
+        `TRUMP BUCKS  +${this.billCount}`, {
+          fontFamily: FONT, fontSize: '18px', color: '#8ff0a8',
+          stroke: '#1e5233', strokeThickness: 4,
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(31);
+    }
+
+    this.add.text(W / 2, H / 2 + 42 + extra,
       isBest ? 'NEW BEST! THE BEST EVER!' : `best: ${save.best} m`, {
         fontFamily: FONT, fontSize: '20px', color: '#f5c542',
         stroke: '#71301f', strokeThickness: 5,
       }).setOrigin(0.5).setScrollFactor(0).setDepth(31);
 
     this.time.delayedCall(400, () => {
-      uiButton(this, W / 2, H / 2 + 100, 240, 54, 'REMATCH',
+      uiButton(this, W / 2, H / 2 + 100 + extra, 240, 54, 'REMATCH',
         () => this.scene.restart(), { size: 24 })
         .setScrollFactor(0).setDepth(31);
-      uiButton(this, W / 2 - 70, H / 2 + 170, 120, 46, 'SHOP',
+      uiButton(this, W / 2 - 70, H / 2 + 170 + extra, 120, 46, 'SHOP',
         () => this.scene.start('Shop'), { color: 0xb8860b, size: 18 })
         .setScrollFactor(0).setDepth(31);
-      uiButton(this, W / 2 + 70, H / 2 + 170, 120, 46, 'MENU',
+      uiButton(this, W / 2 + 70, H / 2 + 170 + extra, 120, 46, 'MENU',
         () => this.scene.start('Menu'), { color: 0x2b3a5e, size: 18 })
         .setScrollFactor(0).setDepth(31);
       this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
@@ -799,7 +954,12 @@ class GameScene extends Phaser.Scene {
       if (this.cursors.right.isDown || this.keys.D.isDown) dir = 1;
       const ptr = this.input.activePointer;
       const SS = window.SS;
-      if (ptr.isDown && ptr.y / SS > 105) dir = ptr.x / SS < this.W / 2 ? -1 : 1;
+      // while the boost button is showing, ignore touch-steering on it so a tap
+      // to launch doesn't also nudge the player sideways
+      const onBoost = this.boostBtn
+        && Math.abs(ptr.x / SS - this.boostBtnX) < 46
+        && Math.abs(ptr.y / SS - this.boostBtnY) < 46;
+      if (ptr.isDown && ptr.y / SS > 105 && !onBoost) dir = ptr.x / SS < this.W / 2 ? -1 : 1;
       // scale run speed with the tempo so you can still aim in the shorter airtime
       p.setVelocityX(dir * 330 * this.pace());
       if (dir !== 0) p.setFlipX(dir < 0);
@@ -846,10 +1006,10 @@ class GameScene extends Phaser.Scene {
       this.aura.setVisible(false);
     }
 
-    // magnet pulls nearby coins
+    // magnet pulls nearby coins and bills
     if (time < this.magnetUntil) {
       this.items.children.iterate(it => {
-        if (!it || it.itemType !== 'coin') return;
+        if (!it || (it.itemType !== 'coin' && it.itemType !== 'bill')) return;
         const d2 = Phaser.Math.Distance.Between(it.x, it.y, p.x, p.y);
         if (d2 < 240) this.physics.moveToObject(it, p, 460);
       });

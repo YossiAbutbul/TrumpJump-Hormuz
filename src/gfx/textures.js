@@ -26,46 +26,79 @@ function tex(scene, key, w, h, draw) {
 function buildTextures(scene) {
   // player skins are PNG art loaded in MenuScene.preload (assets/skins/<id>/).
 
-  // ---- pontoon bridge segment (breakable platform: sinks after one bounce).
-  // Wooden plank deck resting on floating drums. ----
+  // ---- inflatable dinghy (breakable platform: bursts after one bounce). ----
+  // A bright rubber air-tube boat. The tube fill + gloss is shared with the
+  // burst debris so the flying pieces read as bits of the same boat.
+  function inflatedTube(ctx, x, y, w, h, r) {
+    rr(ctx, x, y, w, h, r); ctx.fillStyle = '#ef6a2b'; ctx.fill();
+    // glossy rubber shading: hot highlight up top, deep shadow at the belly
+    ctx.save(); rr(ctx, x, y, w, h, r); ctx.clip();
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, 'rgba(255,198,150,0.9)');
+    g.addColorStop(0.38, 'rgba(255,150,90,0)');
+    g.addColorStop(1, 'rgba(120,45,15,0.5)');
+    ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+    ctx.restore();
+  }
+
   tex(scene, 'barrels', 96, 32, (ctx) => {
-    // floating drums under the deck
-    for (let i = 0; i < 3; i++) {
-      const x = 16 + i * 32;
-      ctx.fillStyle = '#d6d2c6';
-      ctx.beginPath();
-      ctx.ellipse(x, 22, 13, 8.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // blue bottom band, clipped to the drum
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(x, 22, 13, 8.5, 0, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.fillStyle = '#2f6fb5';
-      ctx.fillRect(x - 13, 24, 26, 8);
-      ctx.restore();
-      ctx.strokeStyle = '#8f887c';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(x, 22, 13, 8.5, 0, 0, Math.PI * 2);
-      ctx.stroke();
+    // soft shadow the boat casts on the water
+    ctx.fillStyle = 'rgba(20,50,80,0.20)';
+    ctx.beginPath(); ctx.ellipse(48, 29, 46, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+    // main pontoon tube, fully rounded ends (bow + stern)
+    inflatedTube(ctx, 2, 5, 92, 22, 11);
+    // pinched seams between the inflated air chambers
+    [22, 40, 58, 76].forEach((sx) => {
+      ctx.strokeStyle = 'rgba(150,60,25,0.75)'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(sx, 6.5); ctx.lineTo(sx, 25.5); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,205,165,0.5)'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(sx + 1.5, 6.5); ctx.lineTo(sx + 1.5, 25.5); ctx.stroke();
+    });
+    // glossy bulge on each chamber
+    [12, 31, 49, 67, 86].forEach((cx) => {
+      ctx.fillStyle = 'rgba(255,238,220,0.55)';
+      ctx.beginPath(); ctx.ellipse(cx, 10, 5.5, 2.3, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    // grab rope scalloped along the side on little D-ring tabs
+    ctx.strokeStyle = '#e7e0cf'; ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    for (let sx = 8; sx <= 80; sx += 18) {
+      ctx.moveTo(sx, 18); ctx.quadraticCurveTo(sx + 9, 22.5, sx + 18, 18);
     }
-    // plank deck on top
-    ctx.fillStyle = '#b98038';
-    rr(ctx, 0, 4, 96, 10, 3); ctx.fill();
-    // top-edge sunlight
-    ctx.fillStyle = 'rgba(255,230,180,0.45)';
-    rr(ctx, 0, 4, 96, 3, 3); ctx.fill();
-    // plank seams
-    ctx.strokeStyle = '#7e5620';
-    ctx.lineWidth = 1;
-    for (let x = 12; x < 96; x += 12) {
-      ctx.beginPath(); ctx.moveTo(x, 4.5); ctx.lineTo(x, 13.5); ctx.stroke();
-    }
-    // deck outline
-    ctx.strokeStyle = '#6e4a1e';
-    ctx.lineWidth = 1.2;
-    rr(ctx, 0, 4, 96, 10, 3); ctx.stroke();
+    ctx.stroke();
+    [8, 26, 44, 62, 80].forEach((dx) => {
+      ctx.fillStyle = '#5b5b64';
+      ctx.beginPath(); ctx.arc(dx, 18, 1.4, 0, Math.PI * 2); ctx.fill();
+    });
+    // inflation valve near the stern
+    ctx.fillStyle = '#3a3a40';
+    ctx.beginPath(); ctx.arc(84, 9, 2.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath(); ctx.arc(83.2, 8.2, 0.9, 0, Math.PI * 2); ctx.fill();
+    // wet waterline + foam edge along the bottom
+    ctx.save(); rr(ctx, 2, 5, 92, 22, 11); ctx.clip();
+    ctx.fillStyle = 'rgba(30,80,130,0.26)'; ctx.fillRect(2, 23, 92, 6);
+    ctx.fillStyle = 'rgba(210,235,255,0.6)'; ctx.fillRect(2, 22.5, 92, 1);
+    ctx.restore();
+    // outline
+    ctx.strokeStyle = '#a8461a'; ctx.lineWidth = 1.3;
+    rr(ctx, 2, 5, 92, 22, 11); ctx.stroke();
+  });
+
+  // ---- dinghy debris: two rubber tube segments for the burst on bounce ----
+  tex(scene, 'barrel-chunk', 28, 22, (ctx) => {
+    inflatedTube(ctx, 2, 3, 24, 16, 8);
+    ctx.strokeStyle = 'rgba(150,60,25,0.7)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(14, 4); ctx.lineTo(14, 18); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,238,220,0.55)';
+    ctx.beginPath(); ctx.ellipse(8, 7, 4, 1.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#a8461a'; ctx.lineWidth = 1.2; rr(ctx, 2, 3, 24, 16, 8); ctx.stroke();
+  });
+  tex(scene, 'plank-chunk', 30, 12, (ctx) => {
+    inflatedTube(ctx, 1, 1, 28, 10, 5);
+    ctx.fillStyle = 'rgba(255,238,220,0.5)';
+    ctx.beginPath(); ctx.ellipse(10, 4, 6, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#a8461a'; ctx.lineWidth = 1.1; rr(ctx, 1, 1, 28, 10, 5); ctx.stroke();
   });
 
   // ---- buoy: rubber duck floating on the water (narrow platform) ----
@@ -134,6 +167,71 @@ function buildTextures(scene) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('$', 13, 14);
+  });
+
+  // ---- Trump bill: rare premium currency ("Trump Bucks") ----
+  tex(scene, 'bill', 40, 24, (ctx) => {
+    // green paper + engraved frame
+    ctx.fillStyle = '#4b8f5f'; rr(ctx, 1, 1, 38, 22, 3); ctx.fill();
+    ctx.strokeStyle = '#dff3e4'; ctx.lineWidth = 1; rr(ctx, 3.5, 3.5, 33, 17, 2); ctx.stroke();
+    ctx.strokeStyle = '#2f5f3d'; ctx.lineWidth = 1.4; rr(ctx, 1, 1, 38, 22, 3); ctx.stroke();
+    // centre portrait oval
+    ctx.fillStyle = '#dcefe1';
+    ctx.beginPath(); ctx.ellipse(20, 12, 6.5, 8, 0, 0, Math.PI * 2); ctx.fill();
+    // --- tiny Trump portrait, clipped to the oval ---
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(20, 12, 6.5, 8, 0, 0, Math.PI * 2); ctx.clip();
+    // navy suit shoulders
+    ctx.fillStyle = '#25344a';
+    ctx.beginPath(); ctx.moveTo(12, 21); ctx.quadraticCurveTo(20, 14.5, 28, 21);
+    ctx.lineTo(28, 22); ctx.lineTo(12, 22); ctx.closePath(); ctx.fill();
+    // face
+    ctx.fillStyle = '#e7b98f';
+    ctx.beginPath(); ctx.ellipse(20, 12.5, 4, 5, 0, 0, Math.PI * 2); ctx.fill();
+    // red tie
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.moveTo(20, 16.5); ctx.lineTo(18.7, 22); ctx.lineTo(21.3, 22); ctx.closePath(); ctx.fill();
+    // blond hair swoosh
+    ctx.fillStyle = '#f2d873';
+    ctx.beginPath();
+    ctx.moveTo(15.5, 10); ctx.quadraticCurveTo(16, 6, 22, 6.6);
+    ctx.quadraticCurveTo(25.5, 7, 24.6, 9.6);
+    ctx.quadraticCurveTo(22, 8, 18.8, 8.9);
+    ctx.quadraticCurveTo(16.8, 9.3, 15.5, 11); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#2f5f3d'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.ellipse(20, 12, 6.5, 8, 0, 0, Math.PI * 2); ctx.stroke();
+    // corner numerals
+    ctx.fillStyle = '#eaf7ee';
+    ctx.font = 'bold 7px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('47', 8, 7); ctx.fillText('47', 32, 17);
+  });
+
+  // ---- boost icon: little rocket, for the LAUNCH PAD purchase + in-game tap ----
+  tex(scene, 'boost', 30, 36, (ctx) => {
+    // exhaust flame
+    ctx.fillStyle = '#ffb03a';
+    ctx.beginPath(); ctx.moveTo(10, 27); ctx.quadraticCurveTo(15, 41, 20, 27); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ff6a2a';
+    ctx.beginPath(); ctx.moveTo(12.5, 27); ctx.quadraticCurveTo(15, 35, 17.5, 27); ctx.closePath(); ctx.fill();
+    // fins
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.moveTo(9, 19); ctx.lineTo(3.5, 29); ctx.lineTo(11, 25); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(21, 19); ctx.lineTo(26.5, 29); ctx.lineTo(19, 25); ctx.closePath(); ctx.fill();
+    // body
+    ctx.fillStyle = '#e8ecf0';
+    ctx.beginPath(); ctx.moveTo(15, 2);
+    ctx.quadraticCurveTo(22, 10, 21, 25); ctx.lineTo(9, 25);
+    ctx.quadraticCurveTo(8, 10, 15, 2); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#9aa4b0'; ctx.lineWidth = 1; ctx.stroke();
+    // red nose cone
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.moveTo(15, 2); ctx.quadraticCurveTo(19, 7, 19, 11);
+    ctx.lineTo(11, 11); ctx.quadraticCurveTo(11, 7, 15, 2); ctx.closePath(); ctx.fill();
+    // window
+    ctx.fillStyle = '#4aa3e0';
+    ctx.beginPath(); ctx.arc(15, 16, 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#2f6fb5'; ctx.lineWidth = 1; ctx.stroke();
   });
 
   // ---- MAGA cap powerup (jet flight) ----

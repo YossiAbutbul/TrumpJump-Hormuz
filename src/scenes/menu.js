@@ -62,6 +62,12 @@ class MenuScene extends Phaser.Scene {
     this.bankText = this.add.text(50, 32, `${save.bank}`, {
       fontFamily: FONT, fontSize: '20px', color: '#f5c542',
     }).setOrigin(0, 0.5);
+    // Trump Bucks in their own smaller pill under the coins
+    uiPanel(this, 12, 58, 108, 32);
+    this.add.image(32, 74, 'bill').setScale(0.62 * TS);
+    this.billsText = this.add.text(50, 74, `${save.bills || 0}`, {
+      fontFamily: FONT, fontSize: '15px', color: '#8ff0a8',
+    }).setOrigin(0, 0.5);
     uiPanel(this, W - 202, 12, 130, 40);
     this.bestText = this.add.text(W - 137, 32, `BEST ${save.best}`, {
       fontFamily: FONT, fontSize: '16px', color: '#ffe9c9',
@@ -354,6 +360,7 @@ class MenuScene extends Phaser.Scene {
   refreshStats() {
     const save = window.SAVE.data;
     if (this.bankText) this.bankText.setText(`${save.bank}`);
+    if (this.billsText) this.billsText.setText(`${save.bills || 0}`);
     if (this.bestText) this.bestText.setText(`BEST ${save.best}`);
   }
 

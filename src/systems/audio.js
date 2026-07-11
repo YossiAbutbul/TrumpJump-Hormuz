@@ -23,7 +23,7 @@ class Sfx {
     this._filesTried = true;
     this.snd = scene.sound; // global sound manager, survives scene switches
     ['quack', 'jet', 'jump', 'spring', 'coin', 'power', 'shield',
-     'hit', 'zap', 'over', 'click', 'alarm'].forEach(n => {
+     'hit', 'zap', 'over', 'click', 'alarm', 'splash'].forEach(n => {
       const key = 'sfx-' + n;
       scene.load.audio(key, 'assets/sfx/' + n + '.mp3');
       scene.load.once('filecomplete-audio-' + key, () => { this.files[n] = key; });
@@ -90,14 +90,21 @@ class Sfx {
     [660, 880, 660, 990].forEach((f, i) =>
       setTimeout(() => this.tone(f, 0.1, 'sine', 0.06), i * 60));
   }
-  // duck bounce: nasal falling honk — two detuned sawtooths an octave apart
+  // duck bounce: nasal falling honk — two detuned sawtooths an octave apart.
+  // Kept ~40% quieter than a normal cue so it doesn't dominate.
   quack() {
-    if (this.playFile('quack', { volume: 0.35 })) return;
-    this.tone(480, 0.14, 'sawtooth', 0.015, 190);
-    this.tone(960, 0.14, 'sawtooth', 0.006, 380);
+    if (this.playFile('quack', { volume: 0.06 })) return;
+    this.tone(480, 0.14, 'sawtooth', 0.0025, 190);
+    this.tone(960, 0.14, 'sawtooth', 0.001, 380);
+  }
+  // raft break-apart: soft watery plop with a touch of high spray fizz
+  splash() {
+    if (this.playFile('splash', { volume: 0.4 })) return;
+    this.tone(520, 0.12, 'sine', 0.04, 170);
+    this.tone(1300, 0.09, 'triangle', 0.02, 480);
   }
   // looping flight sound — plays only when a real jet.mp3 is provided in
-  // assets/sfx/ (no synth fallback; the rumble didn't sound good).
+  // assets/sfx/ (no synth fallback; the synth rumble didn't sound good).
   // start/stop pair because flight length varies (upgrades, pause).
   jetStart() {
     if (this.mutedNow()) return;
