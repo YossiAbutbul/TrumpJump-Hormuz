@@ -464,6 +464,16 @@ class GameScene extends Phaser.Scene {
       drone.setScale(window.TEX_SCALE).setDepth(6);
       const spd = 55 + 85 * d;
       drone.setVelocityX(Phaser.Math.Between(0, 1) ? spd : -spd);
+      // blinking red light on the drone's top — a fixed-size overlay, so the
+      // drone body never changes size and the hitbox stays clear
+      const eye = this.add.image(drone.x, drone.y - 3, 'drone-eye')
+        .setScale(window.TEX_SCALE).setDepth(7);
+      drone.eye = eye;
+      const blink = this.tweens.add({
+        targets: eye, alpha: 0.1, duration: 300, yoyo: true, repeat: -1,
+        ease: 'Sine.inOut',
+      });
+      drone.once('destroy', () => { blink.remove(); eye.destroy(); });
     }
 
     // missiles: one at a time to start, up to two together later in the run.
@@ -729,6 +739,11 @@ class GameScene extends Phaser.Scene {
     drone.body.enable = false;
     this.burst.explode(14, drone.x, drone.y);
     window.SFX.zap();
+    // fade the blinking eye out with the body so the glow doesn't linger
+    if (drone.eye) {
+      this.tweens.killTweensOf(drone.eye);
+      this.tweens.add({ targets: drone.eye, alpha: 0, duration: 400 });
+    }
     this.tweens.add({
       targets: drone, y: drone.y + 220, angle: 180, alpha: 0, duration: 650,
       onComplete: () => drone.destroy(),
@@ -1005,6 +1020,11 @@ class GameScene extends Phaser.Scene {
       if (this.shieldOn) { this.shieldOn = false; this.popShield(); }
       this.aura.setVisible(false);
     }
+
+    // keep each drone's blinking light glued to its top
+    this.drones.children.iterate(dr => {
+      if (dr && dr.eye) { dr.eye.x = dr.x; dr.eye.y = dr.y - 3; }
+    });
 
     // magnet pulls nearby coins and bills
     if (time < this.magnetUntil) {

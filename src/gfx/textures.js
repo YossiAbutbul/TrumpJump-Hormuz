@@ -464,7 +464,7 @@ function buildTextures(scene) {
     }
   });
 
-  // ---- drone hazard ----
+  // ---- drone hazard (original look; the red light blinks via an overlay) ----
   tex(scene, 'drone', 60, 30, (ctx) => {
     ctx.fillStyle = '#3a424f';
     rr(ctx, 20, 12, 20, 12, 4); ctx.fill();
@@ -474,20 +474,32 @@ function buildTextures(scene) {
     ctx.moveTo(24, 14); ctx.lineTo(8, 6);
     ctx.moveTo(36, 14); ctx.lineTo(52, 6);
     ctx.stroke();
-    ctx.fillStyle = '#7c828e';
+    // soft light-grey rotors — visible against dark skies without being stark
+    ctx.fillStyle = '#c4cad4';
     ctx.beginPath();
-    ctx.ellipse(8, 5, 8, 3, 0, 0, Math.PI * 2);
-    ctx.ellipse(52, 5, 8, 3, 0, 0, Math.PI * 2);
+    ctx.ellipse(8, 5, 9, 3.2, 0, 0, Math.PI * 2);
+    ctx.ellipse(52, 5, 9, 3.2, 0, 0, Math.PI * 2);
     ctx.fill();
-    // red light + camera
-    ctx.fillStyle = '#e33';
-    ctx.beginPath();
-    ctx.arc(30, 12, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.strokeStyle = '#9aa2b0';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(8, 5, 9, 3.2, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(52, 5, 9, 3.2, 0, 0, Math.PI * 2); ctx.stroke();
+    // camera lens underneath (the top red light is drawn by the blink overlay)
     ctx.fillStyle = '#222';
     ctx.beginPath();
     ctx.arc(30, 25, 4, 0, Math.PI * 2);
     ctx.fill();
+  });
+
+  // blinking red light that sits on the drone's top in game
+  tex(scene, 'drone-eye', 16, 16, (ctx) => {
+    const g = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    g.addColorStop(0, 'rgba(255,70,70,1)');
+    g.addColorStop(0.5, 'rgba(230,40,40,0.55)');
+    g.addColorStop(1, 'rgba(230,40,40,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 16, 16);
+    ctx.fillStyle = '#ff4040';
+    ctx.beginPath(); ctx.arc(8, 8, 3, 0, Math.PI * 2); ctx.fill();
   });
 
   // ---- clouds ----
