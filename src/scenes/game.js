@@ -455,7 +455,7 @@ class GameScene extends Phaser.Scene {
     }
 
     // rare Trump Bucks drop — a premium currency, uncommon per platform
-    if (Math.random() < 0.018) this.spawnItem(x, y - 74, 'bill');
+    if (Math.random() < 0.007) this.spawnItem(x, y - 74, 'bill');
 
     if (this.maxMeters > 500 && this.drones.countActive() < 2
         && Math.random() < 0.02 + 0.06 * d) {
