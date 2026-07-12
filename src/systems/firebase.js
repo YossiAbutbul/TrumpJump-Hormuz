@@ -9,7 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs,
-  where, serverTimestamp,
+  serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const cfg = window.FIREBASE_CONFIG || {};
@@ -111,27 +111,30 @@ if (!configured) {
 
     async signOut() { try { await signOut(auth); } catch (e) { console.warn(e); } },
 
-    // sets the leaderboard name if it's not already taken by another account
-    // (case-insensitive). Resolves {ok} or {ok:false, msg} so callers can
-    // reprompt. If the availability check itself fails we let the write
-    // through — better a rare duplicate than blocking the user on a flaky read.
+    // sets the leaderboard name only if no other account already uses it
+    // (case-insensitive). Accounts created before usernameLower existed are
+    // covered too: every account's name is compared, lowered client-side.
+    // Resolves {ok} or {ok:false, msg} so callers can reprompt. If the
+    // availability check can't run, the write is refused — never risk a
+    // duplicate.
     async setUsername(name) {
       if (!state.user) return { ok: false, msg: 'not signed in' };
       name = String(name).trim().slice(0, 16) || 'player';
       const lower = name.toLowerCase();
       try {
-        const takenBy = async (field, value) => {
-          const snap = await getDocs(query(
-            collection(db, 'users'), where(field, '==', value), limit(5)
-          ));
-          return snap.docs.some((d) => d.id !== state.user.uid);
-        };
-        // usernameLower covers everything written from now on; the exact-match
-        // fallback still protects names saved before it existed
-        if (await takenBy('usernameLower', lower) || await takenBy('username', name)) {
-          return { ok: false, msg: 'name already taken' };
-        }
-      } catch (e) { console.warn('name check failed', e); }
+        const snap = await getDocs(query(collection(db, 'users'), limit(1000)));
+        let taken = false;
+        snap.forEach((d) => {
+          if (d.id === state.user.uid) return;
+          const v = d.data();
+          const other = v.usernameLower || String(v.username || '').trim().toLowerCase();
+          if (other && other === lower) taken = true;
+        });
+        if (taken) return { ok: false, msg: `"${name}" is taken — names must be unique` };
+      } catch (e) {
+        console.warn('name check failed', e);
+        return { ok: false, msg: 'could not verify the name, try again' };
+      }
       try {
         await setDoc(doc(db, 'users', state.user.uid), {
           username: name, usernameLower: lower, updatedAt: serverTimestamp(),
