@@ -172,7 +172,12 @@ class MenuScene extends Phaser.Scene {
     // account chip (top center) + live auth updates. Track the current user so
     // a sign-in/out (identity change) rebuilds the whole menu — character,
     // fleet, map and pills all reflect the newly loaded / reset save.
-    this._lastUid = (window.FB && window.FB.user) ? window.FB.user.uid : null;
+    // Before Firebase resolves the restored session (1-2s after open), trust
+    // the persisted auth hint so the returning user doesn't flash "guest" and
+    // the confirming auth event doesn't force a visible scene restart.
+    const hint = this.authHint();
+    this._lastUid = (window.FB && window.FB.user) ? window.FB.user.uid
+      : (hint ? hint.uid : null);
     this.updateAccountChip();
     this._authHandler = () => this.onAuth();
     document.addEventListener('fb-auth', this._authHandler);
@@ -206,6 +211,17 @@ class MenuScene extends Phaser.Scene {
     this.input.keyboard.on('keydown-RIGHT', () => {
       if (!this.typingInModal()) this.cycleSkin(1);
     });
+
+    // menu is fully built — drop the HTML boot splash
+    if (window.hideSplash) window.hideSplash();
+  }
+
+  // last-known signed-in identity ({uid, username}) persisted by firebase.js —
+  // only trusted while Firebase hasn't resolved the restored session yet
+  authHint() {
+    if (window.FB && window.FB.authResolved) return null;
+    try { return JSON.parse(localStorage.getItem('tj-auth-hint') || 'null'); }
+    catch (e) { return null; }
   }
 
   typingInModal() {
@@ -353,8 +369,12 @@ class MenuScene extends Phaser.Scene {
 
   refreshWelcome() {
     const fb = window.FB;
-    const name = (fb && fb.profile && fb.profile.username) ? fb.profile.username : 'GUEST';
-    if (this.welcomeText) this.welcomeText.setText(`WELCOME, ${name.toUpperCase()}`);
+    let name = (fb && fb.profile && fb.profile.username) ? fb.profile.username : null;
+    if (!name) {
+      const hint = this.authHint();
+      if (hint && hint.username) name = hint.username;
+    }
+    if (this.welcomeText) this.welcomeText.setText(`WELCOME, ${(name || 'GUEST').toUpperCase()}`);
   }
 
   refreshStats() {
@@ -368,7 +388,7 @@ class MenuScene extends Phaser.Scene {
     if (this.acct) this.acct.destroy();
     const fb = window.FB;
     const W = this.scale.width / window.SS;
-    const signedIn = fb && fb.user;
+    const signedIn = fb && (fb.user || this.authHint());
     const cx = W - 32, cy = 33, R = 19;
     const c = this.add.container(cx, cy).setDepth(6);
     const bg = signedIn ? 0x2e7d32 : 0x2b3a5e;
@@ -384,7 +404,8 @@ class MenuScene extends Phaser.Scene {
       const img = this.add.image(0, 0, faceKey).setDisplaySize((R - 1.5) * 2, (R - 1.5) * 2);
       c.add(img);
     } else if (signedIn) {
-      const name = (fb.profile && fb.profile.username) || '';
+      const hint = this.authHint();
+      const name = (fb.profile && fb.profile.username) || (hint && hint.username) || '';
       c.add(this.add.text(0, 1, (name[0] || '?').toUpperCase(), {
         fontFamily: FONT, fontSize: '18px', color: '#ffffff',
       }).setOrigin(0.5));

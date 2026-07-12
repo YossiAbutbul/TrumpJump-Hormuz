@@ -184,9 +184,77 @@
     width: 118%; height: auto; display: block; margin: -2% 0 0 -9%;
   }
   #pfp-grid .pfp.sel { border-color: #f5c542; box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.45); }
+  /* boot splash — shown instantly (pure CSS, no assets to wait on except the
+     small icon), removed by the Menu scene once the game is ready to render */
+  #splash {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    background: radial-gradient(1200px 800px at 50% 20%, #16203f 0%, #0a0e22 55%, #05070f 100%);
+    opacity: 1;
+    transition: opacity 0.35s ease;
+  }
+  #splash.hide { opacity: 0; pointer-events: none; }
+  #splash img {
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    box-shadow: 0 0 60px rgba(246, 198, 103, 0.25);
+    animation: splash-pulse 1.6s ease-in-out infinite;
+  }
+  #splash .s-title {
+    font-family: "Luckiest Guy", "Arial Black", Arial, sans-serif;
+    font-size: 34px;
+    color: #f5c542;
+    letter-spacing: 2px;
+    text-shadow: 0 3px 0 #71301f;
+  }
+  #splash .s-sub {
+    font-family: "Luckiest Guy", "Arial Black", Arial, sans-serif;
+    font-size: 15px;
+    color: #ffe9c9;
+    letter-spacing: 3px;
+    margin-top: -8px;
+  }
+  #splash .s-spin {
+    width: 30px;
+    height: 30px;
+    margin-top: 10px;
+    border-radius: 50%;
+    border: 4px solid rgba(245, 197, 66, 0.25);
+    border-top-color: #f5c542;
+    animation: splash-spin 0.9s linear infinite;
+  }
+  @keyframes splash-spin { to { transform: rotate(360deg); } }
+  @keyframes splash-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
 </style>
 </head>
 <body>
+<div id="splash">
+  <img src="assets/brand/icon.png" alt="">
+  <div class="s-title">TRUMP JUMP</div>
+  <div class="s-sub">STRAIT OF HORMUZ</div>
+  <div class="s-spin"></div>
+</div>
+<script>
+  // removed by the Menu scene when the game is ready; the timer is a failsafe
+  // so a stalled load never leaves the game hidden behind the splash forever
+  window.hideSplash = function () {
+    var s = document.getElementById('splash');
+    if (!s) return;
+    s.classList.add('hide');
+    setTimeout(function () { s.remove(); }, 400);
+  };
+  setTimeout(window.hideSplash, 12000);
+</script>
 <div id="game"></div>
 <div id="name-modal">
   <div class="box">

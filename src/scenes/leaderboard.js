@@ -86,22 +86,40 @@ class LeaderboardScene extends Phaser.Scene {
   // ---- data + rendering -------------------------------------------------
 
   async loadBoard() {
-    const fb = window.FB, W = this.W;
+    const fb = window.FB;
     if (!fb || !fb.enabled) {
       this.status.setText('leaderboard offline\nsign in to compete');
       return;
     }
+
+    // show the last fetched board immediately; refresh from the server in the
+    // background and only re-render if the standings actually changed
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('tj-lb-cache') || 'null'); } catch (e) {}
+    if (cached && cached.length) this.render(cached);
+
     let rows = [];
     try { rows = await fb.topScores(50); } catch (e) { /* fall through */ }
     if (!this.scene.isActive()) return;
 
     if (!rows.length) {
-      this.status.setText('no scores yet\nbe the first!');
+      if (!cached || !cached.length) this.status.setText('no scores yet\nbe the first!');
       return;
     }
-    this.status.setVisible(false);
-    this.myUid = fb.user && fb.user.uid;
+    try { localStorage.setItem('tj-lb-cache', JSON.stringify(rows)); } catch (e) {}
+    if (JSON.stringify(rows) !== JSON.stringify(cached)) this.render(rows);
+  }
 
+  render(rows) {
+    this.status.setVisible(false);
+    const fb = window.FB;
+    let hint = null;
+    try { hint = JSON.parse(localStorage.getItem('tj-auth-hint') || 'null'); } catch (e) {}
+    this.myUid = (fb.user && fb.user.uid) || (hint && hint.uid) || null;
+
+    if (this.boardBits) this.boardBits.forEach(o => o.destroy());
+    this.boardBits = [];
+    this._scroll = null; // rebuilt by buildList (stays null for short boards)
     this.buildPodium(rows.slice(0, 3));
     this.buildList(rows.slice(3));
   }
@@ -109,6 +127,7 @@ class LeaderboardScene extends Phaser.Scene {
   buildPodium(top) {
     const W = this.W;
     const cont = this.add.container(0, 0);
+    this.boardBits.push(cont);
     // slots: [center #1, left #2, right #3]
     const slots = [
       { x: W / 2, y: 196, r: 54, i: 0 },
@@ -158,11 +177,12 @@ class LeaderboardScene extends Phaser.Scene {
     const rowH = 58, gap = 8;
 
     // divider
-    this.add.rectangle(W / 2, top - 12, W - 48, 2, 0xf5c542, 0.35);
+    this.boardBits.push(this.add.rectangle(W / 2, top - 12, W - 48, 2, 0xf5c542, 0.35));
 
     if (!rest.length) return;
 
     const box = this.add.container(0, top);
+    this.boardBits.push(box);
     rest.forEach((p, idx) => {
       const rank = idx + 4;
       const y = idx * (rowH + gap) + rowH / 2;
@@ -193,28 +213,38 @@ class LeaderboardScene extends Phaser.Scene {
     const maskG = this.make.graphics();
     maskG.fillRect(0, top, W, bottom - top);
     box.setMask(maskG.createGeometryMask());
+    this.boardBits.push(maskG);
 
-    // scrolling (drag + wheel)
+    // scrolling (drag + wheel) — state lives on this._scroll so a background
+    // re-render swaps the target box without stacking duplicate handlers
     const contentH = rest.length * (rowH + gap);
     const visibleH = bottom - top;
-    const minY = top - Math.max(0, contentH - visibleH);
-    const maxY = top;
-    const SS = window.SS;
-    let dragging = false, lastY = 0;
-
-    const clamp = () => { box.y = Phaser.Math.Clamp(box.y, minY, maxY); };
-
-    this.input.on('pointerdown', (p) => { dragging = true; lastY = p.y; });
-    this.input.on('pointerup', () => { dragging = false; });
-    this.input.on('pointermove', (p) => {
-      if (!dragging || !p.isDown) return;
-      box.y += (p.y - lastY) / SS;
-      lastY = p.y;
-      clamp();
-    });
-    this.input.on('wheel', (p, over, dx, dy) => {
-      box.y -= dy * 0.4;
-      clamp();
-    });
+    this._scroll = {
+      box,
+      minY: top - Math.max(0, contentH - visibleH),
+      maxY: top,
+    };
+    if (!this._scrollBound) {
+      this._scrollBound = true;
+      const SS = window.SS;
+      let dragging = false, lastY = 0;
+      const clamp = () => {
+        const s = this._scroll;
+        if (s) s.box.y = Phaser.Math.Clamp(s.box.y, s.minY, s.maxY);
+      };
+      this.input.on('pointerdown', (p) => { dragging = true; lastY = p.y; });
+      this.input.on('pointerup', () => { dragging = false; });
+      this.input.on('pointermove', (p) => {
+        if (!dragging || !p.isDown || !this._scroll) return;
+        this._scroll.box.y += (p.y - lastY) / SS;
+        lastY = p.y;
+        clamp();
+      });
+      this.input.on('wheel', (p, over, dx, dy) => {
+        if (!this._scroll) return;
+        this._scroll.box.y -= dy * 0.4;
+        clamp();
+      });
+    }
   }
 }
