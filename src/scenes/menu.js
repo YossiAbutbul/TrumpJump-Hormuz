@@ -2,30 +2,41 @@ class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
 
   preload() {
-    // load every character skin; texture keys are skin-<id>-idle / -fly / -hit
-    Object.entries(CATALOG.SKINS).forEach(([id, s]) => {
-      this.load.image(`skin-${id}-idle`, `assets/skins/${s.dir}/idle.png`);
-      this.load.image(`skin-${id}-fly`, `assets/skins/${s.dir}/fly.png`);
-      if (s.hit) this.load.image(`skin-${id}-hit`, `assets/skins/${s.dir}/hit.png`);
-    });
+    // load every character skin; texture keys are skin-<id>-idle / -fly / -hit.
+    // After repeated stalled attempts (see watchdog below), stop insisting:
+    // queue nothing so 'complete' fires immediately and the menu builds with
+    // whatever arrived on earlier tries plus procedural fallbacks — a rough
+    // boot always beats an infinite loading screen.
+    if ((window._menuLoadRetries || 0) < 6) {
+      Object.entries(CATALOG.SKINS).forEach(([id, s]) => {
+        this.load.image(`skin-${id}-idle`, `assets/skins/${s.dir}/idle.png`);
+        this.load.image(`skin-${id}-fly`, `assets/skins/${s.dir}/fly.png`);
+        if (s.hit) this.load.image(`skin-${id}-hit`, `assets/skins/${s.dir}/hit.png`);
+      });
+    }
     this.load.on('loaderror', () => {}); // missing art -> procedural fallback
 
     // The loader dispatches queued downloads from the game's update loop, so a
-    // throttled/paused RAF during boot (common on phones) can wedge it: files
-    // stay pending forever with none in flight and the menu never appears.
-    // Watchdog on a plain interval (independent of the game loop): pump the
-    // queue, and if it's truly stuck restart the scene — textures that already
-    // arrived are kept, so each retry only fetches what's still missing.
+    // throttled/paused RAF during boot (common on phones) can wedge it — and
+    // individual connections can also hang mid-download with no error event.
+    // Watchdog on a plain interval (independent of the game loop): whatever
+    // the stall shape, if no file completes for ~3 ticks, restart the scene.
+    // Textures that already arrived are kept, so each retry only fetches
+    // what's still missing.
+    let lastDone = -1, stalled = 0;
     const stall = setInterval(() => {
       const ld = this.load;
       if (!ld || !ld.isLoading()) { clearInterval(stall); return; }
-      if (ld.inflight.size > 0 || ld.list.size === 0) return;
+      if (ld.totalComplete !== lastDone) { lastDone = ld.totalComplete; stalled = 0; return; }
+      stalled++;
       if (window.game && window.game.loop && window.game.loop.wake) window.game.loop.wake();
-      if (ld.checkLoadQueue) ld.checkLoadQueue();
-      if (ld.inflight.size > 0) return; // pump worked, downloads moving again
-      clearInterval(stall);
-      window._menuLoadRetries = (window._menuLoadRetries || 0) + 1;
-      if (window._menuLoadRetries <= 6) this.scene.restart();
+      // queued-but-never-dispatched shape: pumping is cheaper than restarting
+      if (ld.inflight.size === 0 && ld.list.size > 0 && ld.checkLoadQueue) ld.checkLoadQueue();
+      if (stalled >= 3) {
+        clearInterval(stall);
+        window._menuLoadRetries = (window._menuLoadRetries || 0) + 1;
+        this.scene.restart();
+      }
     }, 3000);
     this.load.once('complete', () => clearInterval(stall));
   }
@@ -362,6 +373,11 @@ class MenuScene extends Phaser.Scene {
 
   onAuth() {
     const fb = window.FB;
+    // before Firebase resolves the restored session, FB.user is still null
+    // while _lastUid holds the hint — comparing them now would restart the
+    // scene, whose create() calls onAuth again: an infinite restart loop that
+    // freezes the tab. Wait for the real fb-auth event instead.
+    if (fb && !fb.authResolved) return;
     // a real sign-in/out (identity change) rebuilds the menu so the equipped
     // skin, fleet, map and pills all reflect the loaded/reset save
     const uid = (fb && fb.user) ? fb.user.uid : null;
