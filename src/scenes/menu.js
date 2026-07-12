@@ -9,6 +9,25 @@ class MenuScene extends Phaser.Scene {
       if (s.hit) this.load.image(`skin-${id}-hit`, `assets/skins/${s.dir}/hit.png`);
     });
     this.load.on('loaderror', () => {}); // missing art -> procedural fallback
+
+    // The loader dispatches queued downloads from the game's update loop, so a
+    // throttled/paused RAF during boot (common on phones) can wedge it: files
+    // stay pending forever with none in flight and the menu never appears.
+    // Watchdog on a plain interval (independent of the game loop): pump the
+    // queue, and if it's truly stuck restart the scene — textures that already
+    // arrived are kept, so each retry only fetches what's still missing.
+    const stall = setInterval(() => {
+      const ld = this.load;
+      if (!ld || !ld.isLoading()) { clearInterval(stall); return; }
+      if (ld.inflight.size > 0 || ld.list.size === 0) return;
+      if (window.game && window.game.loop && window.game.loop.wake) window.game.loop.wake();
+      if (ld.checkLoadQueue) ld.checkLoadQueue();
+      if (ld.inflight.size > 0) return; // pump worked, downloads moving again
+      clearInterval(stall);
+      window._menuLoadRetries = (window._menuLoadRetries || 0) + 1;
+      if (window._menuLoadRetries <= 6) this.scene.restart();
+    }, 3000);
+    this.load.once('complete', () => clearInterval(stall));
   }
 
   create() {
@@ -356,10 +375,7 @@ class MenuScene extends Phaser.Scene {
     if (fb && fb.user && fb.profileLoaded
         && (!fb.profile || !fb.profile.username) && !this._prompting) {
       this._prompting = true;
-      window.promptUsername('', (name) => {
-        this._prompting = false;
-        if (name) fb.setUsername(name);
-      });
+      window.pickUsername('', () => { this._prompting = false; });
     }
     // reflect the merged (login) or reset-to-guest (sign-out) save immediately
     this.refreshStats();

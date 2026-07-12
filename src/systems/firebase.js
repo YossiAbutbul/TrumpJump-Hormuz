@@ -9,7 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs,
-  serverTimestamp,
+  where, serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const cfg = window.FIREBASE_CONFIG || {};
@@ -111,15 +111,39 @@ if (!configured) {
 
     async signOut() { try { await signOut(auth); } catch (e) { console.warn(e); } },
 
+    // sets the leaderboard name if it's not already taken by another account
+    // (case-insensitive). Resolves {ok} or {ok:false, msg} so callers can
+    // reprompt. If the availability check itself fails we let the write
+    // through — better a rare duplicate than blocking the user on a flaky read.
     async setUsername(name) {
-      if (!state.user) return;
+      if (!state.user) return { ok: false, msg: 'not signed in' };
       name = String(name).trim().slice(0, 16) || 'player';
-      await setDoc(doc(db, 'users', state.user.uid), {
-        username: name, updatedAt: serverTimestamp(),
-      }, { merge: true });
-      state.profile = { ...(state.profile || {}), username: name };
+      const lower = name.toLowerCase();
+      try {
+        const takenBy = async (field, value) => {
+          const snap = await getDocs(query(
+            collection(db, 'users'), where(field, '==', value), limit(5)
+          ));
+          return snap.docs.some((d) => d.id !== state.user.uid);
+        };
+        // usernameLower covers everything written from now on; the exact-match
+        // fallback still protects names saved before it existed
+        if (await takenBy('usernameLower', lower) || await takenBy('username', name)) {
+          return { ok: false, msg: 'name already taken' };
+        }
+      } catch (e) { console.warn('name check failed', e); }
+      try {
+        await setDoc(doc(db, 'users', state.user.uid), {
+          username: name, usernameLower: lower, updatedAt: serverTimestamp(),
+        }, { merge: true });
+      } catch (e) {
+        console.warn('name save failed', e);
+        return { ok: false, msg: 'could not save, try again' };
+      }
+      state.profile = { ...(state.profile || {}), username: name, usernameLower: lower };
       writeHint(state.user.uid, name);
       emit();
+      return { ok: true };
     },
 
     saveCloud() { return pushSave(); },

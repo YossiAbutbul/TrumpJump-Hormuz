@@ -253,7 +253,7 @@
     s.classList.add('hide');
     setTimeout(function () { s.remove(); }, 400);
   };
-  setTimeout(window.hideSplash, 12000);
+  setTimeout(window.hideSplash, 20000);
 </script>
 <div id="game"></div>
 <div id="name-modal">
@@ -261,6 +261,7 @@
     <button class="m-close" id="name-close">&times;</button>
     <h3>PICK A NAME</h3>
     <input id="name-input" maxlength="16" placeholder="your name" autocomplete="off">
+    <p id="name-msg" style="min-height: 16px; margin: 10px 0 0; font-size: 13px; font-family: Arial, sans-serif; color: #ff7a7a;"></p>
     <button id="name-save">SAVE</button>
   </div>
 </div>

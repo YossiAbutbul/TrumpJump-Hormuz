@@ -37,19 +37,32 @@ window.randomFunnyName = () => {
 window.setGameInputEnabled = (on) => {
   const g = window.game;
   if (!g || !g.scene) return;
-  g.scene.scenes.forEach((s) => { if (s.input) s.input.enabled = on; });
+  g.scene.scenes.forEach((s) => {
+    if (!s.input) return;
+    s.input.enabled = on;
+    // The Game scene's key captures (arrows/SPACE/A/D) preventDefault at the
+    // window level and outlive the scene, silently blocking those characters
+    // in DOM inputs. Suspend all captures while a modal is open.
+    if (s.input.keyboard) {
+      if (on) s.input.keyboard.enableGlobalCapture();
+      else s.input.keyboard.disableGlobalCapture();
+    }
+  });
 };
 
 // Small DOM modal for picking a leaderboard username after first sign-in.
 // Defined here (classic script) so it is available before the module loads.
 // Closing (X) keeps the current name, or invents a funny one if there is none.
-window.promptUsername = (current, cb) => {
+// `err` (optional) shows a message, e.g. "name already taken" on a reprompt.
+window.promptUsername = (current, cb, err) => {
   const modal = document.getElementById('name-modal');
   const input = document.getElementById('name-input');
   const save = document.getElementById('name-save');
   const closeBtn = document.getElementById('name-close');
+  const msg = document.getElementById('name-msg');
   if (!modal || !input || !save) { cb((current && current.trim()) || window.randomFunnyName()); return; }
   input.value = current || '';
+  if (msg) msg.textContent = err || '';
   modal.style.display = 'flex';
   window.setGameInputEnabled(false);
   input.focus();
@@ -75,6 +88,21 @@ window.promptUsername = (current, cb) => {
   save.addEventListener('click', onSave);
   input.addEventListener('keydown', onKey);
   if (closeBtn) closeBtn.addEventListener('click', onClose);
+};
+
+// Prompt for a username and keep reprompting with an error while the chosen
+// name is rejected (already taken by another account). Calls `done` (optional)
+// once the flow settles.
+window.pickUsername = (current, done) => {
+  const ask = (err) => window.promptUsername(current, (name) => {
+    const fb = window.FB;
+    if (!name || !fb || !fb.setUsername) { if (done) done(); return; }
+    Promise.resolve(fb.setUsername(name)).then((res) => {
+      if (res && res.ok === false) ask(res.msg);
+      else if (done) done();
+    });
+  }, err);
+  ask();
 };
 
 // Populate a container with a profile-picture picker: every (non-secret)
@@ -156,7 +184,7 @@ window.accountModal = () => {
     pfpSection();
     btn('CHANGE NAME', 'ghost', () => {
       close();
-      window.promptUsername(name, (n) => { if (n && fb.setUsername) fb.setUsername(n); });
+      window.pickUsername(name);
     });
     btn('SIGN OUT', 'danger', () => { close(); if (fb.signOut) fb.signOut(); });
     btn('CLOSE', 'ghost', close);
