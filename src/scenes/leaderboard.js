@@ -6,6 +6,11 @@ class LeaderboardScene extends Phaser.Scene {
     window.setupCamera(this);
     const W = this.scale.width / SS, H = this.scale.height / SS;
     this.W = W; this.H = H;
+    // scene instances persist across visits but input listeners are cleared on
+    // shutdown — reset the per-visit state so scrolling rebinds every time
+    this._scrollBound = false;
+    this._scroll = null;
+    this.boardBits = null;
     const save = window.SAVE.data;
     buildFaceTextures(this); // circular avatars for each player's profile picture
 
