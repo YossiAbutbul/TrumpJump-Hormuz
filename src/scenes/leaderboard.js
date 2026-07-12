@@ -220,36 +220,55 @@ class LeaderboardScene extends Phaser.Scene {
     box.setMask(maskG.createGeometryMask());
     this.boardBits.push(maskG);
 
-    // scrolling (drag + wheel) — state lives on this._scroll so a background
-    // re-render swaps the target box without stacking duplicate handlers
+    // scrolling (drag + wheel + fling momentum) — state lives on this._scroll
+    // so a background re-render swaps the target box without stacking
+    // duplicate handlers
     const contentH = rest.length * (rowH + gap);
     const visibleH = bottom - top;
     this._scroll = {
       box,
       minY: top - Math.max(0, contentH - visibleH),
       maxY: top,
+      vel: 0, // px per frame, carried after release for a natural fling
     };
     if (!this._scrollBound) {
       this._scrollBound = true;
       const SS = window.SS;
-      let dragging = false, lastY = 0;
+      let lastY = 0;
       const clamp = () => {
         const s = this._scroll;
         if (s) s.box.y = Phaser.Math.Clamp(s.box.y, s.minY, s.maxY);
       };
-      this.input.on('pointerdown', (p) => { dragging = true; lastY = p.y; });
-      this.input.on('pointerup', () => { dragging = false; });
+      this.input.on('pointerdown', (p) => {
+        this._dragging = true;
+        lastY = p.y;
+        if (this._scroll) this._scroll.vel = 0; // grab kills any running fling
+      });
+      this.input.on('pointerup', () => { this._dragging = false; });
       this.input.on('pointermove', (p) => {
-        if (!dragging || !p.isDown || !this._scroll) return;
-        this._scroll.box.y += (p.y - lastY) / SS;
+        if (!this._dragging || !p.isDown || !this._scroll) return;
+        const dy = (p.y - lastY) / SS;
+        this._scroll.box.y += dy;
+        // smoothed release velocity — favors the most recent movement
+        this._scroll.vel = dy * 0.8 + this._scroll.vel * 0.2;
         lastY = p.y;
         clamp();
       });
       this.input.on('wheel', (p, over, dx, dy) => {
         if (!this._scroll) return;
-        this._scroll.box.y -= dy * 0.4;
+        this._scroll.box.y -= dy * 0.8;
         clamp();
       });
     }
+  }
+
+  // fling momentum: after the finger lifts, keep scrolling and ease out
+  update(_, dt) {
+    const s = this._scroll;
+    if (!s || this._dragging || Math.abs(s.vel) < 0.05) return;
+    const f = dt / 16.7; // normalize to 60fps frames
+    s.box.y = Phaser.Math.Clamp(s.box.y + s.vel * f, s.minY, s.maxY);
+    if (s.box.y === s.minY || s.box.y === s.maxY) s.vel = 0; // hit an edge
+    else s.vel *= Math.pow(0.95, f);
   }
 }
