@@ -46,6 +46,7 @@ class GameScene extends Phaser.Scene {
     this.coinCount = 0;
     this.billCount = 0; // rare Trump Bucks collected this run
     this.maxMeters = 0;
+    this.bestCrossed = false;
     this.nextMilestone = 300;
     this.baseY = H - 150;
     this.lastQuoteAt = 0;
@@ -115,6 +116,8 @@ class GameScene extends Phaser.Scene {
     this.nextPlatformY = this.baseY - 100;
     this.lastPlatX = W / 2; // each platform stays within reach of the last one
     for (let i = 0; i < 8; i++) this.spawnNext();
+
+    this.addAltitudeMarkers();
 
     // the sea is a safe, invisible bounce floor at the very start — drifting off
     // the first platform into the water bounces you instead of killing you. It
@@ -862,6 +865,54 @@ class GameScene extends Phaser.Scene {
     });
   }
 
+  // ---------- altitude markers: your best + leaderboard ghosts ----------
+
+  // dashed line across the world at a given altitude, with a face avatar and
+  // label riding its left end. Placed in world coords so it scrolls naturally.
+  addAltitudeMarker(meters, label, faceKey, color, textColor) {
+    const y = this.baseY - 60 - meters * 10;
+    const g = this.add.graphics().setDepth(3).setAlpha(0.85);
+    g.lineStyle(2.5, color, 0.6);
+    for (let x = 6; x < this.W - 6; x += 20) g.lineBetween(x, y, x + 11, y);
+    const face = this.textures.exists(faceKey) ? faceKey : 'face-trump';
+    if (this.textures.exists(face)) {
+      this.add.image(28, y - 17, face).setScale(0.19).setDepth(3).setAlpha(0.95);
+    }
+    this.add.text(48, y - 25, `${label} · ${meters}m`, {
+      fontFamily: FONT, fontSize: '13px', color: textColor,
+      stroke: '#71301f', strokeThickness: 3,
+    }).setDepth(3).setAlpha(0.95);
+  }
+
+  addAltitudeMarkers() {
+    const best = this.saveData.best || 0;
+    if (best > 0) {
+      this.addAltitudeMarker(best, 'YOUR BEST',
+        'face-' + (this.saveData.pfp || 'trump'), 0xf5c542, '#f5c542');
+    }
+    // leaderboard ghosts: the next few players above your best, so there is
+    // always a visible target line to chase. Uses the leaderboard scene's
+    // localStorage cache; falls back to a live fetch when the cache is empty.
+    const place = (rows) => {
+      const me = window.FB && window.FB.user && window.FB.user.uid;
+      (rows || [])
+        .filter(r => r && r.best > best && r.uid !== me)
+        .sort((a, b) => a.best - b.best)
+        .slice(0, 3)
+        .forEach(r => this.addAltitudeMarker(r.best, r.username || 'anon',
+          'face-' + (r.pfp || 'trump'), 0x9ecbff, '#cfe6ff'));
+    };
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('tj-lb-cache') || 'null'); } catch (e) {}
+    if (cached && cached.length) place(cached);
+    else if (window.FB && window.FB.topScores) {
+      window.FB.topScores(50).then((rows) => {
+        try { localStorage.setItem('tj-lb-cache', JSON.stringify(rows)); } catch (e) {}
+        if (this.scene.isActive()) place(rows); // scene may have ended meanwhile
+      }).catch(() => {});
+    }
+  }
+
   banner(msg) {
     const t = this.add.text(this.W / 2, 250, msg, {
       fontFamily: FONT, fontSize: '40px', color: '#f5c542',
@@ -1058,6 +1109,12 @@ class GameScene extends Phaser.Scene {
         this.quote('milestone', 0.8);
         window.VOICE.play(this, 'milestone');
         this.nextMilestone += 300;
+      }
+      // celebrate crossing your own best line the moment it happens
+      if (!this.bestCrossed && this.saveData.best > 0 && meters > this.saveData.best) {
+        this.bestCrossed = true;
+        this.banner('NEW BEST!');
+        window.SFX.power();
       }
     }
 
