@@ -2,7 +2,7 @@
 
 **The internet's most TREMENDOUS arcade climber. Jump higher. Dodge missiles. Win bigly.**
 
-![Trump Jump - Strait of Hormuz](assets/brand/og.jpg)
+![Trump Jump - Strait of Hormuz](assets/brand/banner.png)
 
 [![Play Now](https://img.shields.io/badge/▶_PLAY_NOW-C9312B?style=for-the-badge)](https://trump-jump-hormuz.vercel.app/)
 
