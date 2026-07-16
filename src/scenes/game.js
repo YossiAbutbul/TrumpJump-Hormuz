@@ -874,14 +874,16 @@ class GameScene extends Phaser.Scene {
     const g = this.add.graphics().setDepth(3).setAlpha(0.85);
     g.lineStyle(2.5, color, 0.6);
     for (let x = 6; x < this.W - 6; x += 20) g.lineBetween(x, y, x + 11, y);
+    // face + label ride the right end of the line, above platforms (depth 5)
+    // so a tanker parked at that altitude can't hide them
     const face = this.textures.exists(faceKey) ? faceKey : 'face-trump';
     if (this.textures.exists(face)) {
-      this.add.image(28, y - 17, face).setScale(0.19).setDepth(3).setAlpha(0.95);
+      this.add.image(this.W - 28, y - 17, face).setScale(0.19).setDepth(5).setAlpha(0.95);
     }
-    this.add.text(48, y - 25, `${label} · ${meters}m`, {
+    this.add.text(this.W - 48, y - 25, `${label} · ${meters}m`, {
       fontFamily: FONT, fontSize: '13px', color: textColor,
       stroke: '#71301f', strokeThickness: 3,
-    }).setDepth(3).setAlpha(0.95);
+    }).setOrigin(1, 0).setDepth(5).setAlpha(0.95);
   }
 
   addAltitudeMarkers() {
