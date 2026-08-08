@@ -75,9 +75,10 @@ async function submit(req, res) {
   try {
     await db.collection('runsUsed').doc(marker).create({
       uid, score: replay.score, at: new Date(now),
-      // set a Firestore TTL policy on this field so old markers clean
-      // themselves up: Firestore console > TTL > collection `runsUsed`,
-      // field `expireAt`
+      // Kept for a Firestore TTL policy to act on, should the project ever move
+      // to the Blaze plan — TTL is not offered on Spark. Nothing sweeps these
+      // today and nothing needs to: one ~100-byte doc per record-beating run,
+      // against a 1 GiB free tier, is millions of years of headroom.
       expireAt: new Date(now + 24 * 60 * 60 * 1000),
     });
   } catch (e) {
