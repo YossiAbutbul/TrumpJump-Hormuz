@@ -1,8 +1,15 @@
 # Custom sound effects
 
-Drop mp3 files here to replace the built-in synth sounds. The game picks up
-whatever exists; anything missing keeps its synth version. No code changes or
-manifest needed — just the exact filenames below.
+Drop mp3 files here to replace the built-in synth sounds, using the exact
+filenames below, **and add the name to `index.json`**:
+
+```json
+["quack", "jet"]
+```
+
+Anything not listed keeps its synth version. The index exists so the game
+doesn't request all thirteen files on every load just to find out which ones
+are missing — the browser has no other way to tell.
 
 | file | plays when |
 |---|---|
