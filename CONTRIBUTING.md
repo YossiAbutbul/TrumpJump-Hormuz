@@ -81,6 +81,51 @@ a real score to the real leaderboard. Keep that in mind before grinding.
 
 ---
 
+## Running the whole thing locally
+
+Once you've done Path B, this is the copy-paste sequence for a full local stack
+on any later day:
+
+```bash
+git pull
+npm install                                        # only if package.json changed
+npx vercel env pull .env --environment=production  # only if a secret changed
+npx vercel dev
+```
+
+Open `http://localhost:3000`. What you get:
+
+| Piece | Runs where | Notes |
+|---|---|---|
+| Game, scenes, art | your browser | edit a file, refresh |
+| `/api/start-run`, `/api/submit-run` | local Node, via `vercel dev` | real code, real credentials |
+| Auth, Firestore, leaderboard | **live Firebase** | not a local emulator |
+| `firestore.rules` | **live Firebase** | your local copy of the file is inert |
+
+So two things are always production, even locally: the **database** and the
+**rules**. A local run that beats your best writes a real leaderboard entry, and
+editing `firestore.rules` on disk changes nothing until you paste it into the
+Firebase console.
+
+Verify the stack is healthy:
+
+```bash
+curl.exe -s -X POST http://localhost:3000/api/start-run -w '\nHTTP %{http_code}\n'
+```
+
+| Response | Meaning |
+|---|---|
+| `401 sign in first` | Healthy — credentials loaded, unauthenticated call refused |
+| `500 RUN_SECRET is not set` | `.env` missing or named `.env.local`; re-pull and restart |
+| `500 missing env vars: …` | That variable didn't load |
+| `404` | Functions didn't build — run `npm install` |
+| connection refused | `vercel dev` isn't running, or crashed on startup |
+
+Then in the browser console after a run: no `POST /api/start-run` error means
+the run was opened; sign in, beat your best, and check the leaderboard scene.
+
+---
+
 ## Layout
 
 ```
