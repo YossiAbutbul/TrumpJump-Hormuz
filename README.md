@@ -79,27 +79,6 @@ Interested in acquiring, licensing, white-labeling, or partnering on Trump Jump?
 
 ---
 
-## 🛡️ Leaderboard setup
-
-Scores are verified server-side (`api/submit-run.js`), so the leaderboard can't be set from the browser console. Two one-time steps make it work:
-
-**1. Vercel environment variables** (Settings → Environment Variables, Production + Preview). The first three come from Firebase console → Project settings → Service accounts → *Generate new private key*:
-
-| Variable | Value |
-|---|---|
-| `FIREBASE_PROJECT_ID` | `project_id` from the key JSON |
-| `FIREBASE_CLIENT_EMAIL` | `client_email` from the key JSON |
-| `FIREBASE_PRIVATE_KEY` | `private_key`, the whole `-----BEGIN PRIVATE KEY-----...` string |
-| `RUN_SECRET` | `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
-
-**2. Firestore rules** — paste `firestore.rules` into Firebase console → Firestore → Rules.
-
-No secrets live in this repo; the handlers read them from the environment.
-
-To run the API locally: `npx vercel env pull .env --environment=production`, then `npx vercel dev`. Use `.env`, not `.env.local` — `vercel dev` doesn't pick the latter up here.
-
----
-
 ## 👥 Contributors
 
 - [**@MayaKatan**](https://github.com/MayaKatan) (Maya Katan) — design & coding 🎨💻
