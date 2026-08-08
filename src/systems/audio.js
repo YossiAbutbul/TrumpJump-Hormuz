@@ -16,20 +16,36 @@ class Sfx {
     if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
   }
 
-  // probe assets/sfx/ for replacement files (called once from MenuScene);
-  // whatever loads wins, everything else keeps the synth fallback
+  // Load replacement files listed in assets/sfx/index.json (called once from
+  // MenuScene); anything not listed keeps its synth fallback. The index exists
+  // so the game doesn't fire a request per sound just to discover that twelve
+  // of them aren't there — a browser can't tell a file is missing without
+  // asking. If the index is absent or unreadable we fall back to asking for
+  // everything, which is the old behaviour: noisier, but nothing breaks.
   initFiles(scene) {
     if (this._filesTried) return;
     this._filesTried = true;
     this.snd = scene.sound; // global sound manager, survives scene switches
-    ['quack', 'jet', 'jump', 'spring', 'coin', 'power', 'shield',
-     'hit', 'zap', 'over', 'click', 'alarm', 'splash'].forEach(n => {
-      const key = 'sfx-' + n;
-      scene.load.audio(key, 'assets/sfx/' + n + '.mp3');
-      scene.load.once('filecomplete-audio-' + key, () => { this.files[n] = key; });
-    });
-    scene.load.on('loaderror', () => {}); // missing files -> synth fallback
-    scene.load.start();
+
+    const ALL = ['quack', 'jet', 'jump', 'spring', 'coin', 'power', 'shield',
+      'hit', 'zap', 'over', 'click', 'alarm', 'splash'];
+
+    const queue = (names) => {
+      names.forEach(n => {
+        const key = 'sfx-' + n;
+        scene.load.audio(key, 'assets/sfx/' + n + '.mp3');
+        scene.load.once('filecomplete-audio-' + key, () => { this.files[n] = key; });
+      });
+      scene.load.on('loaderror', () => {}); // a listed-but-broken file -> synth
+      scene.load.start();
+    };
+
+    fetch('assets/sfx/index.json')
+      .then(r => (r.ok ? r.json() : null))
+      // names are matched against ALL, so the index can only enable known
+      // sounds — it can never point the loader at an arbitrary path
+      .then(list => queue(Array.isArray(list) ? list.filter(n => ALL.includes(n)) : ALL))
+      .catch(() => queue(ALL));
   }
 
   mutedNow() {

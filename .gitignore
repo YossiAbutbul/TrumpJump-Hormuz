@@ -3,3 +3,12 @@ node_modules/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Secrets. The service-account key and RUN_SECRET live in Vercel's environment
+# variables only — never in a file in this repo.
+.env
+.env.*
+*serviceAccount*.json
+*firebase-adminsdk*.json
+.vercel
+.env*

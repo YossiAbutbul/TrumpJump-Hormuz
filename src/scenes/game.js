@@ -48,6 +48,10 @@ class GameScene extends Phaser.Scene {
     this.maxMeters = 0;
     this.nextMilestone = 300;
     this.baseY = H - 150;
+    window.RUNGUARD.begin(this); // verified altitude tracking (needs baseY)
+    // open the run on the server too, so the finished trace can be measured
+    // against real elapsed server time. Async and non-blocking.
+    if (window.FB && window.FB.startRun) window.FB.startRun();
     this.lastQuoteAt = 0;
     this.consecutiveBarrels = 0;
 
@@ -888,17 +892,22 @@ class GameScene extends Phaser.Scene {
     window.SFX.jetStop();
 
     const save = this.saveData;
-    const bonus = Math.floor(this.maxMeters / 20);
+    // close the run and take the verified altitude — the ticket is the only
+    // thing submitScore accepts, and its score comes from RUNGUARD's private
+    // tracking, not from this.maxMeters
+    const ticket = window.RUNGUARD.finish();
+    const score = ticket ? ticket.score : 0;
+    this.maxMeters = score; // keep the HUD/summary honest too
+    const bonus = Math.floor(score / 20);
     const earned = this.coinCount + bonus;
     save.bank += earned;
     save.bills = (save.bills || 0) + this.billCount; // rare Trump Bucks
-    const score = this.maxMeters;
     const isBest = score > save.best;
     if (isBest) save.best = score;
     // flush to the cloud immediately so earned money reaches the account even
     // if the player leaves the game-over screen before the debounced save fires
     window.SAVE.flush();
-    if (window.FB && window.FB.user) window.FB.submitScore(score);
+    if (window.FB && window.FB.user) window.FB.submitScore(ticket);
 
     // an extra stats line (Trump Bucks) needs more room, so grow the panel and
     // push the best line + buttons down to keep everything clear
@@ -1049,7 +1058,10 @@ class GameScene extends Phaser.Scene {
     if (targetY < this.camY) this.camY = targetY;
     cam.scrollY = this.camY;
 
-    const meters = Math.max(0, Math.floor((this.baseY - 60 - p.y) / 10));
+    // altitude is owned by RUNGUARD (closure-private, physics-rate-checked), so
+    // maxMeters below is only the HUD's copy — editing it from the console
+    // changes the number on screen and nothing that gets submitted.
+    const meters = window.RUNGUARD.sample(this, time);
     if (meters > this.maxMeters && !this.dead) {
       this.maxMeters = meters;
       this.scoreText.setText(`${meters} m`);

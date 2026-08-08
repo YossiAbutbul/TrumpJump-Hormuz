@@ -46,11 +46,18 @@ window.SAVE = {
     if (window.FB && window.FB.user && window.FB.saveCloud) window.FB.saveCloud();
   },
 
-  // the subset of save data that lives in the user's Firestore doc
+  // The subset of save data that lives in the user's Firestore doc.
+  //
+  // `best` is deliberately NOT here. It is written only by api/submit-run.js
+  // after the run has been verified, and firestore.rules rejects any client
+  // write that changes it. Putting it back would make every save fail the
+  // moment the local best drifts from the cloud one — which happens on any run
+  // the server didn't accept — and the user would silently stop syncing coins
+  // and purchases. `d.best` stays local, for the menus to display.
   cloudBlob() {
     const d = this.data;
     return {
-      bank: d.bank, bills: d.bills, boosts: d.boosts, best: d.best, maps: d.maps,
+      bank: d.bank, bills: d.bills, boosts: d.boosts, maps: d.maps,
       ships: d.ships, skins: d.skins, up: d.up, ship: d.ship, map: d.map,
       skin: d.skin, pfp: d.pfp, boostSide: d.boostSide,
     };
