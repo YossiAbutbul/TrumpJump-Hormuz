@@ -36,30 +36,37 @@ export default async function handler(req, res) {
 }
 
 async function submit(req, res) {
-  const db = getDb();
   const uid = await uidFromRequest(req);
   if (!uid) return res.status(401).json({ error: 'sign in first' });
+  const db = getDb();
 
   const { runToken, score, trace } = req.body || {};
 
   const now = Date.now();
   const token = readRunToken(runToken, now);
-  if (token.error) return reject(res, token.error);
+  if (token.error) return reject(res, token.error, { uid, score });
   // a token issued to somebody else is not yours to spend
-  if (token.uid !== uid) return reject(res, 'run token belongs to another account');
+  if (token.uid !== uid) return reject(res, 'run token belongs to another account', { uid });
 
   const replay = validateTrace(trace, score);
-  if (!replay.ok) return reject(res, replay.reason);
+  if (!replay.ok) {
+    return reject(res, replay.reason, {
+      uid, score, ageMs: token.ageMs,
+      keyframes: Array.isArray(trace && trace.s) ? trace.s.length : null,
+    });
+  }
 
   // The load-bearing check: the run cannot have taken longer than the real time
   // between start-run and now, and cannot have climbed further than that real
   // time allows. Everything above this line is client-supplied; `token.ageMs`
   // is measured by the server clock at both ends.
   if (replay.durationMs > token.ageMs + CLOCK_SLACK_MS) {
-    return reject(res, 'trace claims more play time than actually passed');
+    return reject(res, 'trace claims more play time than actually passed',
+      { uid, score, durationMs: replay.durationMs, ageMs: token.ageMs });
   }
   if (replay.score > MAX_M_PER_S * (token.ageMs / 1000) + SLACK_M) {
-    return reject(res, 'score climbed faster than the game allows');
+    return reject(res, 'score climbed faster than the game allows',
+      { uid, score, ageMs: token.ageMs });
   }
 
   // Single use. create() fails if the marker already exists, so a captured
@@ -73,8 +80,13 @@ async function submit(req, res) {
       // field `expireAt`
       expireAt: new Date(now + 24 * 60 * 60 * 1000),
     });
-  } catch {
-    return reject(res, 'this run was already submitted');
+  } catch (e) {
+    // gRPC 6 = ALREADY_EXISTS, the only failure that means "replay". Anything
+    // else is the database being unhappy and must not be reported as a cheat.
+    if (e.code === 6 || /already exists/i.test(e.message || '')) {
+      return reject(res, 'this run was already submitted', { uid });
+    }
+    throw e; // -> handler's catch -> 500, with the real cause in the log
   }
 
   // Write the score ourselves. The Admin SDK bypasses the rules, which is why
@@ -88,11 +100,19 @@ async function submit(req, res) {
     return replay.score;
   });
 
+  console.log('run accepted:', JSON.stringify({
+    uid, score: replay.score, best, durationMs: replay.durationMs, ageMs: token.ageMs,
+  }));
   return res.status(200).json({ ok: true, best });
 }
 
 // A refusal is a normal outcome, not a server fault: answer 200 with a reason
 // so the client can log it and move on without a console full of red.
-function reject(res, reason) {
+//
+// Logged all the same. A refusal is either a cheat worth knowing about or a
+// limit that's too tight for honest play, and there is no way to tell which
+// from an empty log — `vercel logs --query "run rejected"` shows both.
+function reject(res, reason, ctx = {}) {
+  console.warn('run rejected:', reason, JSON.stringify(ctx));
   return res.status(200).json({ ok: false, reason });
 }
