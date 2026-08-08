@@ -15,7 +15,7 @@
 // is never an error the player sees, it just doesn't count.
 
 import crypto from 'node:crypto';
-import { db, uidFromRequest } from './_lib/admin.js';
+import { getDb, uidFromRequest } from './_lib/admin.js';
 import { readRunToken } from './_lib/run-token.js';
 import { validateTrace, MAX_M_PER_S, SLACK_M } from './_lib/trace.js';
 
@@ -27,7 +27,16 @@ const CLOCK_SLACK_MS = 5000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  try {
+    return await submit(req, res);
+  } catch (e) {
+    console.error('submit-run failed:', e);
+    return res.status(500).json({ error: `server error: ${e.message}` });
+  }
+}
 
+async function submit(req, res) {
+  const db = getDb();
   const uid = await uidFromRequest(req);
   if (!uid) return res.status(401).json({ error: 'sign in first' });
 

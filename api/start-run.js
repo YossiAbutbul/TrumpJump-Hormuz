@@ -13,12 +13,16 @@ import { issueRunToken } from './_lib/run-token.js';
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
 
-  const uid = await uidFromRequest(req);
-  if (!uid) return res.status(401).json({ error: 'sign in first' });
-
   if (!process.env.RUN_SECRET) {
     return res.status(500).json({ error: 'server misconfigured: RUN_SECRET is not set' });
   }
 
-  return res.status(200).json({ runToken: issueRunToken(uid, Date.now()) });
+  try {
+    const uid = await uidFromRequest(req);
+    if (!uid) return res.status(401).json({ error: 'sign in first' });
+    return res.status(200).json({ runToken: issueRunToken(uid, Date.now()) });
+  } catch (e) {
+    console.error('start-run failed:', e);
+    return res.status(500).json({ error: `server misconfigured: ${e.message}` });
+  }
 }
