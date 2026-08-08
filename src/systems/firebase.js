@@ -151,11 +151,18 @@ if (!configured) {
 
     saveCloud() { return pushSave(); },
 
-    async submitScore(score) {
+    // Takes the single-use ticket RUNGUARD minted at game over — never a raw
+    // number. A forged, replayed or hand-written ticket verifies to 0 and no
+    // write happens, so `FB.submitScore(99999)` from the console does nothing.
+    async submitScore(ticket) {
       if (!state.user) return;
-      score = Math.max(0, Math.floor(score));
+      const score = window.RUNGUARD ? window.RUNGUARD.consume(ticket) : 0;
+      if (!score) return;
       const best = (state.profile && state.profile.best) || 0;
       if (score <= best) return;
+      // the rules only accept a non-zero `best` on an existing doc (a doc may
+      // not be *created* with a score), so make sure ours exists first
+      if (!state.profile) await pushSave();
       await setDoc(doc(db, 'users', state.user.uid), {
         best: score, updatedAt: serverTimestamp(),
       }, { merge: true });
