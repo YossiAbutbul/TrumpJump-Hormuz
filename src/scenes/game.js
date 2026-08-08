@@ -49,6 +49,9 @@ class GameScene extends Phaser.Scene {
     this.nextMilestone = 300;
     this.baseY = H - 150;
     window.RUNGUARD.begin(this); // verified altitude tracking (needs baseY)
+    // open the run on the server too, so the finished trace can be measured
+    // against real elapsed server time. Async and non-blocking.
+    if (window.FB && window.FB.startRun) window.FB.startRun();
     this.lastQuoteAt = 0;
     this.consecutiveBarrels = 0;
 

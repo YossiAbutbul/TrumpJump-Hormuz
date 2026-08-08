@@ -4,26 +4,27 @@ rules_version = '2';
 // Google's servers and CANNOT be bypassed from the browser (F12, forged SDK
 // calls, tampered client all still hit these checks).
 //
-// Two layers protect the leaderboard:
-//   1. src/systems/runguard.js  — client side. Altitude is tracked in a private
-//      closure and rate-checked against the game's own physics, and the score
-//      is submitted as a single-use signed ticket. Stops console edits.
-//   2. this file — server side. Even a player who ignores the client entirely
-//      and writes to their own doc with the public SDK can only move `best`
-//      forward, within a ceiling, and no faster than the game could produce it.
+// Three layers protect the leaderboard:
+//   1. src/systems/runguard.js — client side. Altitude is tracked in a private
+//      closure, rate-checked against the game's own physics, and recorded as a
+//      keyframe trace. Stops console edits.
+//   2. api/submit-run.js — server side, and the authority. It replays the trace
+//      and measures it against the real time that passed between /api/start-run
+//      and the submission. It writes `best` with the Admin SDK.
+//   3. this file. `best` is denied to the client outright, so the only way onto
+//      the leaderboard is through layer 2.
 //
 // Scope of protection (intentional, for a casual game):
+//   - `best` is server-written only; a browser cannot set it at all
 //   - a user can only read/write sanely-shaped data in their OWN doc
 //   - no other user's doc can be written
-//   - absurd one-shot values (bank = 999999999, best = 999999) are rejected
-//   - a doc cannot be CREATED carrying a score, so a fresh account can't be
-//     minted straight onto the top of the leaderboard
-//   - `best` and `bank` can only climb as fast as real play allows, measured
-//     against the server clock — grinding a forged score now costs real time
+//   - absurd one-shot values (bank = 999999999) are rejected
+//   - `bank` can only climb as fast as real play allows, measured against the
+//     server clock
 //   - NO personal data (email) is stored here, so the public leaderboard read
 //     cannot leak PII
-// NOT protected (accepted residual risk; would need Cloud Functions to close):
-//   - a patient attacker drip-feeding writes at the allowed rate
+// NOT protected (accepted residual risk):
+//   - a bot driving the real game loop and posting an honest-looking trace
 //   - a user forging their OWN cosmetic items *within* these caps. This only
 //     affects their own account, never other players.
 
@@ -34,15 +35,7 @@ service cloud.firestore {
 
       // ---- believable ceilings (tune to your real game) --------------
       function maxBank() { return 10000000; }  // 10M lifetime coin cap
-      function maxBest() { return 50000;    }  // plausible top score ceiling
 
-      // Fastest the game can physically climb: the jet cruise is 850 px/s at
-      // the 1.4x max pace ramp, and 10 px = 1 m. Keep in step with MAX_M_PER_S
-      // in src/systems/runguard.js.
-      function maxClimbPerSec() { return 130; }
-      // one-run allowance, so a single legitimate game-over write always fits
-      // even when it lands right after the previous save
-      function bestBurst() { return 300; }
       // coins are earned far slower than metres, but a run also banks a
       // distance bonus; these two together cover any single honest run
       function maxCoinsPerSec() { return 50; }
@@ -86,15 +79,16 @@ service cloud.firestore {
                 || b - oldBank() <= coinBurst() + maxCoinsPerSec() * elapsedSec());
       }
 
-      // high score: whole number, 0..cap, can only ever rise, may not appear on
-      // a brand-new doc, and cannot jump further than the run had time to climb
+      // high score: SERVER ONLY. The client may never touch `best` — not raise
+      // it, not lower it. api/submit-run.js writes it with the Admin SDK, which
+      // bypasses these rules entirely, and it only does so after replaying the
+      // run's trace against real elapsed server time.
+      //
+      // Client saves use setDoc(merge), so request.resource.data carries the
+      // existing `best` through untouched and this stays true for them.
       function bestOk() {
         let s = d().get('best', 0);
-        return s is int && s >= 0 && s <= maxBest()
-            && s >= oldBest()
-            && (hasDoc() || s == 0)
-            && (s == oldBest()
-                || s - oldBest() <= bestBurst() + maxClimbPerSec() * elapsedSec());
+        return s is int && s == oldBest();
       }
 
       // every write must stamp the clock the rate checks above depend on
@@ -115,6 +109,10 @@ service cloud.firestore {
             && (!('pfp' in d()) || d().pfp is string);
       }
 
+      // Nothing else is matched, so every other collection — including the
+      // `runsUsed` markers api/submit-run.js writes — is denied to clients by
+      // default. The Admin SDK doesn't go through these rules, so the server
+      // reaches it fine.
       allow read: if true;                       // leaderboard is public (no PII stored)
       allow create, update: if isOwner()
                             && fieldsOk()

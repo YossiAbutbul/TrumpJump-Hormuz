@@ -1,0 +1,13 @@
+{
+  "name": "trump-jump",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Serverless run verification for Trump Jump. The game itself is plain static files — this manifest exists only for the /api handlers.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

@@ -12,13 +12,13 @@
 //     the game's own physics permits, so teleporting the player is clamped away
 //   - endGame() gets back a single-use signed ticket; FB.submitScore takes only
 //     that ticket, so submitScore can't be called with a made-up number
+//   - the run is recorded as a keyframe trace and posted to /api/submit-run,
+//     which replays it against the real time that passed on the server clock
+//     before it will write anything to the leaderboard
 //
-// What it does NOT solve (needs a server; see firestore.rules for the parts
-// that ARE enforced on Google's side): a determined attacker can still drive
-// the real game loop with a script, or skip this code entirely and write to
-// their own Firestore doc with the public SDK. The Firestore rules cap how far
-// and how fast `best` can move, which is the only server-side backstop we have
-// without Cloud Functions.
+// None of the client-side half is trusted by the server — it exists so honest
+// players never notice, and so the trace that gets posted is the same one the
+// game actually played. The decision lives in api/submit-run.js.
 
 (function () {
   'use strict';
@@ -35,6 +35,9 @@
   // dt is clamped before it buys altitude: a stalled tab (or a forged clock)
   // must not hand out a huge allowance in a single frame
   const MAX_DT_MS = 120;
+  // one trace keyframe per this much play time. 250 ms keeps a 16-minute run
+  // under the server's 4000-keyframe cap and the whole POST under ~50 KB.
+  const KEYFRAME_MS = 250;
 
   const rnd = () => {
     const a = new Uint32Array(2);
@@ -56,10 +59,41 @@
     return h.toString(36);
   };
 
+  // hard cap on trace size, matching MAX_KEYFRAMES in api/_lib/trace.js
+  const MAX_KEYFRAMES = 4000;
+
   let run = null;      // the live run — private state, no outside reference
   let pending = null;  // the one ticket finish() handed out, until it's consumed
 
-  const sign = (t) => hash([SECRET, t.nonce, t.score, t.frames, t.runMs].join('|'));
+  // Bank a keyframe: how long since the last one, and the best altitude so far.
+  // Recording the running best rather than the live altitude means the trace
+  // ends on exactly the score being claimed, with nothing to reconcile.
+  const keyframe = () => {
+    run.trace.push([Math.round(run.sinceKey), run.max]);
+    run.sinceKey = 0;
+    if (run.trace.length >= MAX_KEYFRAMES) compact();
+  };
+
+  // A run has no time limit, so a full trace is halved in place instead of
+  // truncated: merge each pair of keyframes (keeping the later score, summing
+  // the gap) and double the interval. An hour-long run costs the same bytes as
+  // a 30-second one, and the server's climb-rate check still holds because the
+  // merged keyframe carries the merged time with it.
+  const compact = () => {
+    const t = run.trace, out = [];
+    for (let i = 0; i < t.length; i += 2) {
+      const a = t[i], b = t[i + 1];
+      out.push(b ? [a[0] + b[0], b[1]] : a);
+    }
+    run.trace = out;
+    run.keyMs *= 2;
+  };
+
+  // the trace is signed along with the score, so a ticket can't be handed on
+  // with somebody else's trace stapled to it
+  const sign = (t) => hash([
+    SECRET, t.nonce, t.score, t.frames, t.runMs, hash(JSON.stringify(t.trace)),
+  ].join('|'));
 
   const API = {
     // start tracking a fresh run. Called from GameScene.create, so a rematch
@@ -72,6 +106,9 @@
         lastT: -1,
         frames: 0,
         nonce: rnd(),
+        trace: [],                // [msSinceLastKeyframe, bestSoFar] pairs
+        sinceKey: 0,              // play time banked toward the next keyframe
+        keyMs: KEYFRAME_MS,       // grows if the trace has to be compacted
       };
       pending = null;
     },
@@ -84,9 +121,12 @@
       if (!p || !p.body) return run.max;
 
       if (run.lastT < 0) run.lastT = time;
-      run.elapsed += Math.min(MAX_DT_MS, Math.max(0, time - run.lastT));
+      const dt = Math.min(MAX_DT_MS, Math.max(0, time - run.lastT));
+      run.elapsed += dt;
+      run.sinceKey += dt;
       run.lastT = time;
       run.frames++;
+      if (run.sinceKey >= run.keyMs) keyframe();
       if (scene.dead) return run.max; // falling to your death earns nothing
 
       const raw = Math.max(0, Math.floor((run.base - p.y) / 10));
@@ -106,11 +146,13 @@
     // Returns null if there is no run open (e.g. finish() called twice).
     finish() {
       if (!run) return null;
+      keyframe(); // close the trace on the final score, so it ends where the ticket does
       const t = {
         score: run.max,
         frames: run.frames,
         runMs: Math.round(run.elapsed),
         nonce: run.nonce,
+        trace: { v: 1, s: run.trace },
       };
       t.sig = sign(t);
       run = null;
@@ -118,15 +160,15 @@
       return t;
     },
 
-    // Exchange a ticket for the score it certifies. Returns 0 for anything
-    // forged, replayed or stale — FB.submitScore takes nothing else.
+    // Exchange a ticket for the score and trace it certifies. Returns null for
+    // anything forged, replayed or stale — FB.submitScore takes nothing else.
     consume(ticket) {
-      if (!pending || !ticket || typeof ticket !== 'object') return 0;
-      if (ticket.nonce !== pending.nonce || ticket.sig !== pending.sig) return 0;
-      if (ticket.score !== pending.score) return 0;
-      if (sign(ticket) !== ticket.sig) return 0;
+      if (!pending || !ticket || typeof ticket !== 'object') return null;
+      if (ticket.nonce !== pending.nonce || ticket.sig !== pending.sig) return null;
+      if (ticket.score !== pending.score) return null;
+      if (sign(ticket) !== ticket.sig) return null;
       pending = null; // single use: a replayed ticket verifies against nothing
-      return Math.max(0, Math.floor(ticket.score));
+      return { score: Math.max(0, Math.floor(ticket.score)), trace: ticket.trace };
     },
   };
 

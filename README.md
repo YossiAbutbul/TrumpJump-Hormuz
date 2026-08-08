@@ -79,6 +79,52 @@ Interested in acquiring, licensing, white-labeling, or partnering on Trump Jump?
 
 ---
 
+## 🛡️ Leaderboard integrity (setup required)
+
+Scores are verified on the server, so the leaderboard can't be edited from the browser console. The pieces:
+
+| Where | What it does |
+|---|---|
+| `src/systems/runguard.js` | Tracks the run's altitude in a private closure, clamps anything faster than the game's physics, records a keyframe trace |
+| `api/start-run.js` | Stamps the server clock into a signed token when a run begins |
+| `api/submit-run.js` | Replays the trace, checks it against the real elapsed time, writes `best` with the Admin SDK |
+| `firestore.rules` | Denies every client write to `best`, so the handler above is the only way in |
+
+### One-time setup
+
+**1. Service account.** Firebase console → Project settings → Service accounts → *Generate new private key*. That downloads a JSON file — keep it off the repo and out of chat.
+
+**2. Vercel environment variables.** Project Settings → Environment Variables, for Production *and* Preview:
+
+| Variable | Value |
+|---|---|
+| `FIREBASE_PROJECT_ID` | `project_id` from the JSON |
+| `FIREBASE_CLIENT_EMAIL` | `client_email` from the JSON |
+| `FIREBASE_PRIVATE_KEY` | `private_key` from the JSON, the whole `-----BEGIN PRIVATE KEY-----...` string |
+| `RUN_SECRET` | any long random string you invent — see below |
+
+Generate a `RUN_SECRET`:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+**3. Deploy the Firestore rules.** Paste `firestore.rules` into Firebase console → Firestore → Rules. Check the Rules playground first.
+
+**4. Optional cleanup.** Firestore console → TTL → add a policy on collection `runsUsed`, field `expireAt`, so used-run markers delete themselves after a day.
+
+### Note on secrets
+
+No key or secret is stored in this repo — `api/_lib/admin.js` only reads `process.env`, so the file is safe to be public. Everything under `api/` is a serverless function, not a static asset, and the `_lib` underscore keeps it from being routed at all. After deploying you can confirm it isn't reachable:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://trump-jump-hormuz.vercel.app/api/_lib/admin.js
+```
+
+That should print `404`. If it ever prints `200`, the only thing exposed is the variable *names* — but tell me and I'll add an explicit block.
+
+---
+
 ## 👥 Contributors
 
 - [**@MayaKatan**](https://github.com/MayaKatan) (Maya Katan) — design & coding 🎨💻

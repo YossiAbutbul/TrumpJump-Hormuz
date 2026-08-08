@@ -15,7 +15,11 @@ import {
 const cfg = window.FIREBASE_CONFIG || {};
 const configured = cfg.apiKey && !String(cfg.apiKey).startsWith('PASTE');
 
-const state = { user: null, profile: null, profileLoaded: false, authResolved: false };
+const state = {
+  user: null, profile: null, profileLoaded: false, authResolved: false,
+  // the open server-issued run, if any (see startRun/submitScore)
+  runToken: null, runPending: null,
+};
 
 // last-known signed-in identity, persisted so the next app open can render
 // the signed-in UI immediately instead of flashing "guest" while Firebase
@@ -38,6 +42,7 @@ if (!configured) {
     signIn() { alert('Leaderboard is not set up yet — paste your Firebase config in src/config/firebase-config.js.'); },
     signOut() {},
     setUsername() { return Promise.resolve(); },
+    startRun() {},
     submitScore() { return Promise.resolve(); },
     saveCloud() { return Promise.resolve(); },
     topScores() { return Promise.resolve([]); },
@@ -48,6 +53,22 @@ if (!configured) {
   const auth = getAuth(app);
   const db = getFirestore(app);
   const provider = new GoogleAuthProvider();
+
+  // POST to one of our serverless handlers, carrying the caller's Firebase ID
+  // token so the server can prove who is asking. Same origin in production, so
+  // no CORS; running the game off a plain static server locally means /api
+  // isn't there and these calls simply fail (the run stays local).
+  const api = async (path, body) => {
+    if (!auth.currentUser) throw new Error('not signed in');
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+      body: JSON.stringify(body || {}),
+    });
+    if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+    return res.json();
+  };
 
   const loadProfile = async (uid) => {
     try {
@@ -83,6 +104,7 @@ if (!configured) {
     } else {
       state.profile = null;
       state.profileLoaded = true;
+      state.runToken = null; // an open run doesn't survive signing out
       // real sign-out (we previously had a user) -> fresh guest: wipe wallet,
       // best and everything owned back to defaults. The account's real data
       // stays safe in the cloud and returns via mergeCloud on the next sign-in.
@@ -151,23 +173,45 @@ if (!configured) {
 
     saveCloud() { return pushSave(); },
 
+    // Ask the server to open a run. The token it returns carries the server's
+    // clock reading, which is what /api/submit-run measures the finished run
+    // against. Fire-and-forget: if it fails (offline, API not deployed yet) the
+    // run still plays, it just won't reach the leaderboard.
+    startRun() {
+      state.runToken = null;
+      if (!auth.currentUser) return;
+      state.runPending = api('/api/start-run')
+        .then((r) => { state.runToken = (r && r.runToken) || null; })
+        .catch(() => { state.runToken = null; });
+    },
+
     // Takes the single-use ticket RUNGUARD minted at game over — never a raw
-    // number. A forged, replayed or hand-written ticket verifies to 0 and no
-    // write happens, so `FB.submitScore(99999)` from the console does nothing.
+    // number — and posts the recorded run for the server to replay. Nothing
+    // here writes the score: firestore.rules denies client writes to `best`,
+    // so the leaderboard only moves if api/submit-run.js agrees.
     async submitScore(ticket) {
       if (!state.user) return;
-      const score = window.RUNGUARD ? window.RUNGUARD.consume(ticket) : 0;
-      if (!score) return;
+      const run = window.RUNGUARD ? window.RUNGUARD.consume(ticket) : null;
+      if (!run || !run.score) return;
       const best = (state.profile && state.profile.best) || 0;
-      if (score <= best) return;
-      // the rules only accept a non-zero `best` on an existing doc (a doc may
-      // not be *created* with a score), so make sure ours exists first
-      if (!state.profile) await pushSave();
-      await setDoc(doc(db, 'users', state.user.uid), {
-        best: score, updatedAt: serverTimestamp(),
-      }, { merge: true });
-      state.profile = { ...(state.profile || {}), best: score };
-      emit();
+      if (run.score <= best) return;
+
+      await state.runPending;              // the token may still be in flight
+      if (!state.runToken) return;         // no server run open — nothing to submit
+      const token = state.runToken;
+      state.runToken = null;               // one submission per run, always
+
+      try {
+        const res = await api('/api/submit-run', {
+          runToken: token, score: run.score, trace: run.trace,
+        });
+        if (!res || !res.ok) {
+          console.warn('run rejected:', (res && res.reason) || 'unknown');
+          return;
+        }
+        state.profile = { ...(state.profile || {}), best: res.best };
+        emit();
+      } catch (e) { console.warn('score submit failed', e); }
     },
 
     async topScores(n = 20) {
