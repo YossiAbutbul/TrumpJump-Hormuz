@@ -160,6 +160,17 @@ playground first; a mistake there locks every player out of saving.
 `best`. The client cannot write `best` at all — the rules deny it. If you touch
 run logic, keep `MAX_M_PER_S` in `runguard.js` and `api/_lib/trace.js` in step.
 
+**`firebase-admin` is pinned to an exact version** (`12.7.0`, no caret) on
+purpose. From 13 onward it pulls `jwks-rsa@4` → `jose@6`, which is ESM-only,
+and Vercel's function runtime can't `require()` it — every call dies with
+`FUNCTION_INVOCATION_FAILED`. This does **not** reproduce on a dev machine:
+Node 22.12+ allows `require(esm)`, so `vercel dev` works fine while production
+is broken. If you ever bump it, test the deployed URL, or locally with:
+
+```bash
+node --no-experimental-require-module --input-type=module -e "import('firebase-admin/auth').then(()=>console.log('ok'))"
+```
+
 **Sounds are optional.** Missing `assets/sfx/*.mp3` falls back to the built-in
 synth. To add one, drop the file in and list its name in `assets/sfx/index.json`
 (voice clips go in `assets/voice/manifest.json`).
