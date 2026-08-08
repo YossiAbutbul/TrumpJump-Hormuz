@@ -96,6 +96,8 @@ Scores are verified server-side (`api/submit-run.js`), so the leaderboard can't 
 
 No secrets live in this repo; the handlers read them from the environment.
 
+To run the API locally: `npx vercel env pull .env --environment=production`, then `npx vercel dev`. Use `.env`, not `.env.local` — `vercel dev` doesn't pick the latter up here.
+
 ---
 
 ## 👥 Contributors
