@@ -1,7 +1,6 @@
 // Persistent save data + shared UI helpers. The item catalog lives in
-// config/catalog.js (window.CATALOG).
-
-window.FONT = '"Luckiest Guy", "Arial Black", Arial';
+// config/catalog.js (window.CATALOG); colour, depth and type come from
+// config/theme.js (window.THEME, window.FONT, window.FONT_BODY).
 
 window.SAVE = {
   data: null,
@@ -116,43 +115,114 @@ window.SAVE = {
 };
 window.SAVE.load();
 
-// rounded translucent panel
+// ---- shared UI components -------------------------------------------------
+// Every panel, button and badge on every screen is built here, so the whole
+// game speaks one language: chunky shapes, a thick navy outline on everything,
+// and depth from a hard offset edge rather than a blur.
+//
+// A raised thing (button) sits on a solid `outline`-coloured edge and presses
+// down onto it. A sunken thing (currency badge, score readout) has that same
+// shadow cast inward from its top lip. Nothing invents its own shading.
+
+// A surface: panels, cards, modal bodies.
+// `inset: true` sinks it into the screen instead — currency pills, score wells.
 function uiPanel(scene, x, y, w, h, opts = {}) {
-  const g = scene.add.graphics();
-  g.fillStyle(opts.color ?? 0x11142a, opts.alpha ?? 0.72);
-  g.fillRoundedRect(x, y, w, h, opts.radius ?? 14);
+  const T = window.THEME;
+  const r = opts.radius ?? T.radius;
+  const alpha = opts.alpha ?? 1;
+  const base = opts.color ?? T.surfaceContainer;
+  // callers that re-layout (pills that resize with their value) pass their own
+  // graphics object and clear it themselves
+  const g = opts.g || scene.add.graphics();
+
+  if (opts.inset) {
+    // Sunken: a shadow cast in from the top lip. Drawn as two stacked fills —
+    // a dark pill, then the surface pill shifted down over it, so the shadow
+    // is a crescent along the top edge and follows the corner radius exactly.
+    // (Painting a short rounded rect inside instead gives a radius larger than
+    // its own height, which renders as a detached blob above the shape.)
+    g.fillStyle(0x000817, 0.55 * alpha);
+    g.fillRoundedRect(x, y, w, h, r);
+    g.fillStyle(base, alpha);
+    g.fillRoundedRect(x, y + 3, w, h - 3, r);
+  } else {
+    g.fillStyle(base, alpha);
+    g.fillRoundedRect(x, y, w, h, r);
+  }
+
   if (opts.stroke !== false) {
-    g.lineStyle(2, opts.strokeColor ?? 0xf5c542, opts.strokeAlpha ?? 0.45);
-    g.strokeRoundedRect(x, y, w, h, opts.radius ?? 14);
+    const bw = opts.borderWidth ?? T.border;
+    g.lineStyle(bw, opts.strokeColor ?? T.outline, opts.strokeAlpha ?? 1);
+    g.strokeRoundedRect(x, y, w, h, r);
   }
   return g;
 }
 
-// rounded button with hover and press feedback
+// A pill-shaped readout — coins, bills, BEST. Sunken, never pressable.
+function uiBadge(scene, x, y, w, h, opts = {}) {
+  return uiPanel(scene, x, y, w, h, {
+    color: window.THEME.surfaceHighest, borderWidth: 3,
+    ...opts, radius: h / 2, inset: true,
+  });
+}
+
+// The arcade button. Two layers: a base in the outline colour, and a face on
+// top of it. Pressing moves the face down onto the base, exactly like a
+// mechanical switch — box-shadow: 0 4px 0 #1D3557, then translateY(4px).
 function uiButton(scene, x, y, w, h, label, onClick, opts = {}) {
+  const T = window.THEME;
   const c = scene.add.container(x, y);
-  const r = Math.min(16, h / 2 - 2);
-  const g = scene.add.graphics();
-  g.fillStyle(opts.color ?? 0xc9312b, 1);
-  g.fillRoundedRect(-w / 2, -h / 2, w, h, r);
-  g.lineStyle(3, 0xffffff, 0.22);
-  g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+  const r = Math.min(opts.radius ?? T.radius, h / 2);
+  const base = opts.color ?? T.primary;
+  const edge = opts.edge ?? T.edge;
+  const bw = opts.borderWidth ?? T.border;
+
+  // the hard edge the face presses onto — same shape, offset down, no blur
+  const back = scene.add.graphics();
+  back.fillStyle(T.outline, 1);
+  back.fillRoundedRect(-w / 2, -h / 2 + edge, w, h, r);
+
+  const top = scene.add.container(0, 0);
+  const face = scene.add.graphics();
+  face.fillStyle(base, 1);
+  face.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+  face.lineStyle(bw, T.outline, 1);
+  face.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+
+  // gold and pale surfaces take the dark ink; everything else takes white
+  const ink = opts.textColor
+    ?? (base === T.secondary ? '#694900' : base === T.secondaryLight ? '#422c00' : '#ffffff');
   const t = scene.add.text(0, 1, label, {
-    fontFamily: window.FONT, fontSize: (opts.size ?? 20) + 'px',
-    color: opts.textColor ?? '#ffffff',
+    fontFamily: window.FONT, fontSize: (opts.size ?? 20) + 'px', color: ink,
   }).setOrigin(0.5);
-  c.add([g, t]);
-  c.setSize(w, h);
+  // the signature: a hard, unblurred navy shadow under every headline
+  if (ink === '#ffffff') t.setShadow(0, 3, '#1d3557', 0, false, true);
+
+  top.add([face, t]);
+  c.add([back, top]);
+  c.setSize(w, h + edge);
   c.label = t;
+
+  // let callers restyle the face later (shop tabs recolour on selection)
+  c.setFaceColor = (color) => {
+    face.clear();
+    face.fillStyle(color, 1);
+    face.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    face.lineStyle(bw, T.outline, 1);
+    face.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+  };
+
   if (opts.disabled) {
-    c.setAlpha(0.5);
+    c.setAlpha(0.45);
   } else {
+    const release = () => { top.y = 0; };
     c.setInteractive({ useHandCursor: true });
-    c.on('pointerover', () => c.setScale(1.06));
-    c.on('pointerout', () => c.setScale(1));
-    c.on('pointerdown', () => c.setScale(0.94));
+    c.on('pointerover', () => top.setScale(1.02));
+    c.on('pointerout', () => { top.setScale(1); release(); });
+    c.on('pointerdown', () => { top.y = edge; });
     c.on('pointerup', () => {
-      c.setScale(1);
+      top.setScale(1);
+      release();
       window.SFX.click();
       if (onClick) onClick();
     });

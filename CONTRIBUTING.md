@@ -98,7 +98,7 @@ Open `http://localhost:3000`. What you get:
 | Piece | Runs where | Notes |
 |---|---|---|
 | Game, scenes, art | your browser | edit a file, refresh |
-| `/api/start-run`, `/api/submit-run` | local Node, via `vercel dev` | real code, real credentials |
+| `/api/start-run`, `/api/submit-run`, `/api/daily-claim` | local Node, via `vercel dev` | real code, real credentials |
 | Auth, Firestore, leaderboard | **live Firebase** | not a local emulator |
 | `firestore.rules` | **live Firebase** | your local copy of the file is inert |
 
@@ -131,7 +131,7 @@ the run was opened; sign in, beat your best, and check the leaderboard scene.
 ```
 index.html              loads everything, in order
 src/config/             Firebase web config, item catalog
-src/systems/            save, audio, voice, firebase, runguard
+src/systems/            save, audio, voice, firebase, runguard, daily
 src/gfx/                procedurally generated textures and hats
 src/scenes/             menu, shop, game, leaderboard
 api/                    Vercel serverless functions (score verification)
@@ -159,6 +159,13 @@ playground first; a mistake there locks every player out of saving.
 `api/submit-run.js` replays it against real elapsed server time before writing
 `best`. The client cannot write `best` at all — the rules deny it. If you touch
 run logic, keep `MAX_M_PER_S` in `runguard.js` and `api/_lib/trace.js` in step.
+
+**The daily bonus is paid server-side too.** `api/daily-claim.js` advances
+`streak` / `lastClaimDay` against the server clock and pays the coins in the
+same transaction; the rules deny the client both fields, so a wound-forward
+device clock earns nothing. The reset boundary is UTC midnight. If you retune
+the payouts, change `REWARDS` in **both** `api/_lib/daily.js` (the one that
+pays) and `src/systems/daily.js` (the one the modal draws).
 
 **`firebase-admin` is pinned to an exact version** (`12.7.0`, no caret) on
 purpose. From 13 onward it pulls `jwks-rsa@4` → `jose@6`, which is ESM-only,

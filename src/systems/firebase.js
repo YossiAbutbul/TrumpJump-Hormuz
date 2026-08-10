@@ -44,6 +44,7 @@ if (!configured) {
     setUsername() { return Promise.resolve(); },
     startRun() {},
     submitScore() { return Promise.resolve(); },
+    claimDaily() { return Promise.resolve({ ok: false, reason: 'sign in first' }); },
     saveCloud() { return Promise.resolve(); },
     topScores() { return Promise.resolve([]); },
   };
@@ -66,7 +67,13 @@ if (!configured) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
       body: JSON.stringify(body || {}),
     });
-    if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+    if (!res.ok) {
+      // carry the status so callers can tell "this build has no API" (404 —
+      // a plain static server, no `vercel dev`) from a server that answered badly
+      const err = new Error(`${path} -> ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
     return res.json();
   };
 
@@ -212,6 +219,47 @@ if (!configured) {
         state.profile = { ...(state.profile || {}), best: res.best };
         emit();
       } catch (e) { console.warn('score submit failed', e); }
+    },
+
+    // Ask the server for today's sign-in bonus. Nothing here decides whether
+    // the player is owed one: api/daily-claim.js reads its own clock and
+    // firestore.rules denies the browser any write to `streak`, so the worst a
+    // tampered client can do is get refused. The coins/bills the server paid
+    // are mirrored into the local save as a delta — never as an absolute — so
+    // money earned since the last cloud sync isn't overwritten.
+    async claimDaily() {
+      if (!state.user) return { ok: false, reason: 'sign in first' };
+      let res;
+      try {
+        res = await api('/api/daily-claim');
+      } catch (e) {
+        console.warn('daily claim failed', e);
+        // No status at all is a real network failure. A 4xx means the request
+        // reached something that would not serve it — on a plain static file
+        // server (no `vercel dev`) that's a 404 or a 405 depending on the
+        // server, and neither is worth telling the player to retry.
+        const reason = !e.status ? 'could not reach the server, try again'
+          : e.status === 401 ? 'sign in first'
+          : e.status >= 500 ? 'the server had a problem, try again'
+          : 'daily bonus is not available on this build';
+        return { ok: false, reason };
+      }
+      if (res && res.lastClaimDay) {
+        // adopt the server's view of the streak either way — a refusal usually
+        // means another device already claimed today
+        state.profile = {
+          ...(state.profile || {}),
+          streak: res.streak, lastClaimDay: res.lastClaimDay,
+        };
+      }
+      if (res && res.ok && window.SAVE) {
+        const d = window.SAVE.data;
+        d.bank = (d.bank || 0) + ((res.reward && res.reward.coins) || 0);
+        d.bills = (d.bills || 0) + ((res.reward && res.reward.bills) || 0);
+        window.SAVE.flush(); // push straight away so the two banks reconverge
+      }
+      emit();
+      return res;
     },
 
     async topScores(n = 20) {

@@ -38,6 +38,7 @@ Earn coins every run and spend them on real progression:
 - ⬆️ **Power-up upgrades** - level up your Jet, Shield, and Magnet (8 levels each)
 
 ### Compete & keep your progress
+- 🎁 **Daily bonus & streaks** - sign in every day for a growing payout, seven days to the jackpot, and the streak keeps counting as long as you keep showing up
 - 🏆 **Global leaderboard** - one-tap Google sign-in and battle the world for the top spot
 - ☁️ **Cloud saves** - your coins, skins, and best score follow you across every device
 - 🔑 **Secret codes** - hand out friend codes to unlock exclusive bonus characters

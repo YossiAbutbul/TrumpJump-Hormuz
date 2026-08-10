@@ -10,6 +10,24 @@ function rr(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
+// Break up the flat stretches of a canvas gradient with a faint per-pixel
+// jitter. Canvas quantises each channel to 8 bits, so a long soft gradient
+// lands on visible bands; nudging each pixel by a pixel or two of noise moves
+// the boundaries around and the eye stops seeing them. `amp` is in 0-255
+// units — 3 is invisible as texture but enough to kill the banding.
+function ditherBands(ctx, w, h, amp) {
+  // getImageData works in device pixels and ignores the ctx transform, while
+  // callers pass logical size — so scale up by the same SS that tex() applied.
+  const s = window.SS || 1;
+  const img = ctx.getImageData(0, 0, w * s, h * s);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const n = (Math.random() - 0.5) * 2 * amp;
+    d[i] += n; d[i + 1] += n; d[i + 2] += n;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
 function tex(scene, key, w, h, draw) {
   if (scene.textures.exists(key)) return;
   // Draw at SS× the logical size so the art carries enough detail to stay sharp
@@ -155,7 +173,7 @@ function buildTextures(scene) {
 
   // ---- coin ----
   tex(scene, 'coin', 26, 26, (ctx) => {
-    ctx.fillStyle = '#f5c542';
+    ctx.fillStyle = '#ffd795';
     ctx.beginPath();
     ctx.arc(13, 13, 11, 0, Math.PI * 2);
     ctx.fill();
@@ -243,13 +261,13 @@ function buildTextures(scene) {
     ctx.beginPath();
     ctx.arc(17, 17, 15, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#f5c542';
+    ctx.strokeStyle = '#ffd795';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(17, 17, 13, 0, Math.PI * 2);
     ctx.stroke();
     // star
-    ctx.fillStyle = '#f5c542';
+    ctx.fillStyle = '#ffd795';
     ctx.beginPath();
     for (let i = 0; i < 5; i++) {
       const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
@@ -322,13 +340,21 @@ function buildTextures(scene) {
   });
 
   // ---- clouds ----
-  tex(scene, 'cloud', 110, 50, (ctx) => {
-    ctx.fillStyle = 'rgba(255,240,230,0.85)';
-    [[25, 32, 18], [50, 25, 22], [78, 32, 17], [60, 36, 16]].forEach(([x, y, r]) => {
+  // Soft overlapping blobs rather than hard opaque discs: three circles at
+  // 30-40% white under a blur, which is what the design uses. They read as
+  // atmosphere behind the UI instead of solid shapes competing with it.
+  tex(scene, 'cloud', 150, 90, (ctx) => {
+    ctx.filter = 'blur(7px)';
+    const blob = (x, y, r, a) => {
+      ctx.fillStyle = `rgba(255,255,255,${a})`;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
-    });
+    };
+    blob(48, 50, 26, 0.30);
+    blob(78, 43, 31, 0.40);
+    blob(110, 52, 21, 0.30);
+    ctx.filter = 'none';
   });
 
   // ---- sun ----
@@ -376,10 +402,6 @@ function buildTextures(scene) {
     ctx.fillStyle = '#d8dee9';
     ctx.fillRect(3, 22, 8, 8);
     ctx.fillRect(23, 22, 8, 8);
-    ctx.fillStyle = '#f5c542';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('$', 17, 12);
   });
 
   // ---- missile hazard ----
@@ -413,7 +435,7 @@ function buildTextures(scene) {
 
   // ---- missile warning sign ----
   tex(scene, 'warn', 40, 36, (ctx) => {
-    ctx.fillStyle = '#f5c542';
+    ctx.fillStyle = '#ffd795';
     ctx.beginPath();
     ctx.moveTo(20, 2); ctx.lineTo(38, 33); ctx.lineTo(2, 33);
     ctx.closePath(); ctx.fill();
@@ -424,25 +446,6 @@ function buildTextures(scene) {
     ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'center';
     ctx.fillText('!', 20, 28);
-  });
-
-  // ---- coastline silhouettes (both shores of the strait) ----
-  tex(scene, 'coast', 480, 180, (ctx) => {
-    ctx.fillStyle = 'rgba(48,38,74,0.9)';
-    ctx.beginPath();
-    ctx.moveTo(0, 180);
-    ctx.lineTo(0, 90);
-    ctx.quadraticCurveTo(60, 40, 120, 100);
-    ctx.quadraticCurveTo(160, 140, 200, 160);
-    ctx.lineTo(200, 180);
-    ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(480, 180);
-    ctx.lineTo(480, 80);
-    ctx.quadraticCurveTo(430, 30, 380, 90);
-    ctx.quadraticCurveTo(340, 140, 300, 165);
-    ctx.lineTo(300, 180);
-    ctx.closePath(); ctx.fill();
   });
 
   // ---- particles ----
@@ -515,18 +518,102 @@ function buildShipTextures(scene, key) {
   tex(scene, 'boat-' + key, 110, 32, (ctx) => drawBoat(ctx, s));
 }
 
+// How deep the water sits, in logical units, shared by every screen. A fixed
+// band rather than a fraction of the height: as a third of the screen it ate
+// the opening frame of a run and left the starting tanker looking submerged
+// rather than afloat. At 200 the horizon lands just above it.
+const SEA_H = 200;
+const seaBand = (H) => ({ seaH: SEA_H, seaTop: H - SEA_H });
+
+// The shared backdrop for every static screen — menu, shop, leaderboard — so
+// they read as the same place at the same time of day: a sunset wash, drifting
+// cloud clusters, a navy mountain silhouette sitting on the waterline, and
+// water across the bottom third.
+//
+// Deliberately no sun: it burned a bright hole through the middle of the
+// screen, exactly where the UI sits. Moon maps keep theirs — it is small, high,
+// and never lands behind a control.
+//
+// Returns the cloud sprites so a caller with an update loop can drift them.
+function drawBackdrop(scene, mapKey, opts = {}) {
+  const SS = window.SS, TS = window.TEX_SCALE;
+  const W = scene.scale.width / SS, H = scene.scale.height / SS;
+  const map = CATALOG.MAPS[mapKey];
+  const { seaH, seaTop } = seaBand(H);
+
+  scene.add.image(W / 2, H / 2, 'sky-' + mapKey).setDisplaySize(W, H);
+  if (map.sun === 'moon') scene.add.image(W / 2, 300, 'moon').setScale(1.2 * TS);
+
+  const clouds = [];
+  const top = 70, bottom = Math.max(top + 40, Math.min(360, seaTop - 90));
+  for (let i = 0; i < (opts.clouds ?? 4); i++) {
+    const c = scene.add.image(
+      Phaser.Math.Between(0, W), Phaser.Math.Between(top, bottom), 'cloud'
+    ).setScale(Phaser.Math.FloatBetween(0.75, 1.25) * TS).setTint(map.cloudTint);
+    c.speed = Phaser.Math.FloatBetween(8, 20);
+    clouds.push(c);
+  }
+
+  scene.add.image(W / 2, seaTop - 100, 'coast-' + mapKey).setScale(TS);
+  scene.add.image(W / 2, seaTop + seaH / 2, 'sea-' + mapKey).setDisplaySize(W, seaH);
+  return clouds;
+}
+
 // ---- map themes: sky + sea recolored per shop selection ----
+
+// blend two hex colours, t = 0 gives a, t = 1 gives b
+function mixHex(a, b, t) {
+  const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [r1, g1, b1] = p(a), [r2, g2, b2] = p(b);
+  const c = (x, y) => Math.round(x + (y - x) * t);
+  return `rgb(${c(r1, r2)},${c(g1, g2)},${c(b1, b2)})`;
+}
 
 function buildMapTextures(scene, key) {
   const m = CATALOG.MAPS[key];
+
+  // ---- coastline: the two shores of the strait -------------------------
+  // Two separate landmasses with open water between them, which is what a
+  // strait actually is — one continuous ridge read as a lake shore.
+  //
+  // Each is drawn with rounded summits: the curve runs through the midpoint
+  // between neighbouring points, using each point as the control, so crests
+  // are arcs rather than spikes. Colour is mixed from the map's own sea, so
+  // every map gets shores that belong to it without anyone choosing them.
+  tex(scene, 'coast-' + key, 480, 200, (ctx) => {
+    ctx.fillStyle = mixHex(m.sea[1], '#000000', 0.2);
+
+    const shore = (pts) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], 200);
+      ctx.lineTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length - 1; i++) {
+        const [x, y] = pts[i], [nx, ny] = pts[i + 1];
+        ctx.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
+      }
+      const end = pts[pts.length - 1];
+      ctx.lineTo(end[0], end[1]);
+      ctx.lineTo(end[0], 200);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    shore([[-20, 140], [44, 78], [116, 116], [178, 152], [214, 200]]);   // near shore
+    shore([[268, 200], [312, 150], [378, 84], [446, 122], [500, 100]]);  // far shore
+  });
+
   tex(scene, 'sky-' + key, 480, 800, (ctx) => {
     const g = ctx.createLinearGradient(0, 0, 0, 800);
     g.addColorStop(0, m.sky[0]);
-    g.addColorStop(0.45, m.sky[1]);
-    g.addColorStop(0.75, m.sky[2]);
+    g.addColorStop(0.40, m.sky[1]);
+    g.addColorStop(0.70, m.sky[2]);
     g.addColorStop(1, m.sky[3]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 480, 800);
+    // Dither. A 4-stop gradient over 800px steps through ~256 levels per
+    // channel and the flat stretches show as visible bands; a faint per-pixel
+    // jitter breaks the boundaries up and the sky reads as one smooth wash.
+    ditherBands(ctx, 480, 800, 3);
     if (m.stars) {
       for (let i = 0; i < 90; i++) {
         const x = (i * 971) % 480, y = ((i * 613) % 560);
@@ -541,14 +628,18 @@ function buildMapTextures(scene, key) {
     g.addColorStop(1, m.sea[1]);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 480, 220);
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth = 2;
+    ditherBands(ctx, 480, 220, 3);
+    // flat highlight dashes, thinning with distance — the Stitch water reads as
+    // still, not choppy, so these are straight lines rather than wave curves
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineCap = 'round';
     for (let i = 0; i < 14; i++) {
-      const y = 10 + Math.pow(i, 1.4) * 6;
+      const y = 12 + Math.pow(i, 1.4) * 6;
       const x = (i * 137) % 400;
+      ctx.lineWidth = 2.4 - (i / 14) * 1.2;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(x + 20, y - 4, x + 40, y);
+      ctx.lineTo(x + 52 - i * 2, y);
       ctx.stroke();
     }
   });

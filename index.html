@@ -21,14 +21,14 @@
 <meta name="twitter:image" content="https://trump-jump-hormuz.vercel.app/assets/brand/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@800;900&family=Be+Vietnam+Pro:wght@500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   html, body {
     margin: 0;
     padding: 0;
     height: 100dvh;
     overflow: hidden;
-    background: radial-gradient(1200px 800px at 50% 20%, #16203f 0%, #0a0e22 55%, #05070f 100%);
+    background: radial-gradient(1200px 800px at 50% 20%, #112a4c 0%, #00132d 55%, #000e24 100%);
     font-family: Arial, sans-serif;
   }
   #game {
@@ -40,150 +40,313 @@
   }
   #game canvas {
     border-radius: 10px;
-    box-shadow: 0 0 80px rgba(246, 198, 103, 0.18), 0 10px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 80px rgba(251, 180, 0, 0.16), 0 10px 40px rgba(0, 0, 0, 0.6);
     touch-action: none;
   }
-  #name-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 7, 15, 0.7);
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-  }
-  #name-modal .box {
-    position: relative;
-    background: #16203f;
-    border: 2px solid #f5c542;
-    border-radius: 14px;
-    padding: 22px 24px;
-    width: 280px;
-    max-width: 80vw;
-    text-align: center;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
-    font-family: "Luckiest Guy", Arial, sans-serif;
-  }
-  #name-modal .m-close {
-    position: absolute; top: 6px; right: 12px; background: none; border: none;
-    color: #ffd9a8; font-size: 26px; line-height: 1; cursor: pointer;
-    font-family: Arial, sans-serif; padding: 2px 4px;
-  }
-  #name-modal .m-close:hover { color: #fff; }
-  #name-modal h3 { color: #f5c542; margin: 0 0 14px; letter-spacing: 1px; }
-  #name-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 2px solid #f5c542;
-    background: #0a0e22;
-    color: #fff;
-    font-size: 18px;
-    outline: none;
-  }
-  #name-save {
-    margin-top: 14px;
-    width: 100%;
-    padding: 11px;
-    border: none;
-    border-radius: 10px;
-    background: #c9312b;
-    color: #fff;
-    font-size: 18px;
-    font-family: "Luckiest Guy", Arial, sans-serif;
-    cursor: pointer;
-  }
-  #account-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 7, 15, 0.7);
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-  }
-  #account-modal .box {
-    position: relative;
-    background: #16203f;
-    border: 2px solid #f5c542;
-    border-radius: 14px;
-    padding: 22px 24px;
-    width: 300px;
-    max-width: 82vw;
-    text-align: center;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
-    font-family: "Luckiest Guy", Arial, sans-serif;
-  }
-  #account-modal .m-close {
-    position: absolute;
-    top: 6px;
-    right: 12px;
-    background: none;
-    border: none;
-    color: #ffd9a8;
-    font-size: 26px;
-    line-height: 1;
-    cursor: pointer;
-    font-family: Arial, sans-serif;
-    padding: 2px 4px;
-  }
-  #account-modal .m-close:hover { color: #fff; }
-  #account-modal h3 { color: #f5c542; margin: 0 0 8px; letter-spacing: 1px; }
-  #account-modal .m-sub {
-    color: #ffd9a8; font-family: Arial, sans-serif; font-size: 13px; margin: 0 0 16px;
-  }
-  .m-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; box-sizing: border-box; margin: 8px 0 0; padding: 11px;
-    border: none; border-radius: 10px; font-size: 16px;
-    font-family: "Luckiest Guy", Arial, sans-serif; cursor: pointer; color: #fff;
-  }
-  .m-btn.google { background: #4285f4; }
-  .m-btn.danger { background: #c9312b; }
-  .m-btn.ghost { background: transparent; border: 2px solid #3a4a6a; color: #ffd9a8; }
-  .m-btn .gi {
-    width: 18px; height: 18px; background: #fff; border-radius: 3px;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #4285f4; font-weight: bold; font-family: Arial, sans-serif; font-size: 13px;
-  }
-  #settings-modal {
+  /* ---- DOM modals ---------------------------------------------------------
+     These wear the same Kinetic Arcade system as the canvas: chunky shapes, a
+     thick outline on everything, depth from a hard offset edge instead of a
+     blur, and the three faces (Anybody / Be Vietnam Pro / JetBrains Mono).
+     Every colour below comes from src/config/theme.js via its --tj-* vars, so
+     changing a token moves the canvas and the modals together.
+
+     Overlays get a thick SECONDARY border rather than the navy outline used
+     elsewhere — that is what lifts them off the game world behind. */
+  .m-overlay, #name-modal, #account-modal, #settings-modal, #daily-modal {
     display: none; position: fixed; inset: 0;
-    background: rgba(5, 7, 15, 0.7);
+    background: rgba(0, 8, 22, 0.72);
     align-items: center; justify-content: center; z-index: 50;
   }
-  #settings-modal .box {
-    position: relative; background: #16203f; border: 2px solid #f5c542;
-    border-radius: 14px; padding: 22px 24px; width: 300px; max-width: 82vw;
-    text-align: center; box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
-    font-family: "Luckiest Guy", Arial, sans-serif;
+  #name-modal .box, #account-modal .box, #settings-modal .box, #daily-modal .box {
+    position: relative; box-sizing: border-box;
+    background: var(--tj-surface-container);
+    border: 4px solid var(--tj-secondary);
+    border-radius: var(--tj-radius-lg);
+    padding: 24px; width: 330px; max-width: 88vw; text-align: center;
+    box-shadow: 0 8px 0 0 var(--tj-outline), 0 22px 44px rgba(0, 8, 22, 0.6);
+    font-family: var(--tj-font);
+    animation: modalIn 0.22s cubic-bezier(0.2, 1.4, 0.4, 1) both;
   }
-  #settings-modal .m-close {
-    position: absolute; top: 6px; right: 12px; background: none; border: none;
-    color: #ffd9a8; font-size: 26px; line-height: 1; cursor: pointer;
-    font-family: Arial, sans-serif; padding: 2px 4px;
+  @keyframes modalIn {
+    from { transform: translateY(14px) scale(0.94); opacity: 0; }
+    to { transform: none; opacity: 1; }
   }
-  #settings-modal .m-close:hover { color: #fff; }
-  #settings-modal h3 { color: #f5c542; margin: 0 0 8px; letter-spacing: 1px; }
-  #settings-modal .m-sub {
-    color: #ffd9a8; font-family: Arial, sans-serif; font-size: 13px; margin: 0 0 14px;
+  /* Just the glyph — a disc around it read as a third button competing with
+     the real ones below. `top` centres it on the title optically, not
+     geometrically: the heading is all caps with a 4px hard shadow under it, so
+     its glyphs sit noticeably higher than its line box and matching the box
+     centre leaves the × looking low. */
+  #name-modal .m-close, #account-modal .m-close,
+  #settings-modal .m-close, #daily-modal .m-close {
+    position: absolute; top: 17px; right: 12px; width: 34px; height: 34px;
+    background: none; border: 0; border-radius: 0;
+    color: var(--tj-tertiary); font-size: 30px; line-height: 1;
+    cursor: pointer; font-family: var(--tj-font-body); padding: 0;
   }
-  #code-input {
-    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px;
-    border: 2px solid #f5c542; background: #0a0e22; color: #fff; font-size: 18px;
-    outline: none; text-align: center; letter-spacing: 3px;
+  #name-modal .m-close:hover, #account-modal .m-close:hover,
+  #settings-modal .m-close:hover, #daily-modal .m-close:hover {
+    color: var(--tj-secondary);
   }
-  #code-msg { min-height: 18px; margin: 12px 0 0; font-size: 14px; font-family: Arial, sans-serif; }
+  #name-modal h3, #account-modal h3, #settings-modal h3, #daily-modal h3 {
+    font-family: var(--tj-font); font-weight: 900; font-size: 26px;
+    text-transform: uppercase; letter-spacing: 0.02em; margin: 0 0 10px;
+    color: var(--tj-secondary-light);
+    text-shadow: 0 4px 0 var(--tj-outline);
+  }
+  .m-sub {
+    color: var(--tj-on-surface); font-family: var(--tj-font-body); font-weight: 500;
+    font-size: 14px; margin: 0 0 16px; line-height: 1.45;
+  }
+  .m-sub.win { color: var(--tj-secondary-light); font-weight: 700; }
+  .m-sub.bad { color: var(--tj-error); font-weight: 700; }
+
+  /* the arcade button: face on a hard edge, pressed down onto it */
+  .m-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; box-sizing: border-box; margin: 10px 0 0; padding: 13px;
+    border: 4px solid var(--tj-outline); border-radius: var(--tj-radius);
+    font-family: var(--tj-font); font-weight: 900; font-size: 18px;
+    text-transform: uppercase; letter-spacing: 0.02em;
+    cursor: pointer; color: #fff; background: var(--tj-primary);
+    box-shadow: 0 4px 0 0 var(--tj-outline);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .m-btn:active { transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-outline); }
+  .m-btn:focus-visible { outline: 3px solid var(--tj-secondary); outline-offset: 3px; }
+  .m-btn.google { background: #4285f4; }
+  .m-btn.danger { background: var(--tj-primary); }
+  .m-btn.gold { background: var(--tj-secondary); color: var(--tj-secondary-ink); }
+  /* surfaceBright, not surfaceHighest: the latter is the same navy as the
+     4px outline these carry, so the rim vanished into the fill */
+  .m-btn.ghost { background: var(--tj-surface-bright); color: var(--tj-on-surface); }
+  .m-btn[disabled] { opacity: 0.5; cursor: default; }
+  .m-btn[disabled]:active { transform: none; box-shadow: 0 4px 0 0 var(--tj-outline); }
+  .m-btn .gi {
+    width: 20px; height: 20px; background: #fff; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #4285f4; font-weight: 700; font-family: var(--tj-font-body); font-size: 13px;
+  }
+  /* Hierarchy by size, not just colour. The action you came to perform is full
+     width and loud; a destructive one is narrower and quieter, so sign-out
+     stops being the brightest thing in the panel; dismissal is quietest. */
+  .m-btn.narrow {
+    width: 76%; margin-left: auto; margin-right: auto;
+    font-size: 15px; padding: 11px;
+  }
+  .m-btn.quiet { background: var(--tj-surface-bright); color: var(--tj-error); }
+  /* The dark buttons carry the same pressable edge as the gold one, but in a
+     deeper colour — against the panel, an outline-navy edge under a navy
+     button is invisible, so they looked flat next to it. */
+  .m-btn.quiet, .m-btn.ghost, .m-btn.text {
+    box-shadow: 0 4px 0 0 var(--tj-surface-lowest);
+  }
+  .m-btn.quiet:active, .m-btn.ghost:active, .m-btn.text:active {
+    transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-surface-lowest);
+  }
+  /* the quietest step still gets an outline and a press — with none, it read
+     as stray text rather than something you could tap */
+  .m-btn.text {
+    width: 56%; margin: 14px auto 0; padding: 9px;
+    background: var(--tj-surface-container); color: var(--tj-tertiary);
+    border: 2px solid rgba(158, 207, 209, 0.4);
+    font-size: 14px; letter-spacing: 0.06em;
+  }
+  .m-btn.text:hover { color: var(--tj-on-surface); border-color: var(--tj-tertiary); }
+
+  /* section heading inside a modal */
+  .m-label {
+    font-family: var(--tj-font-label); font-weight: 700; font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--tj-tertiary); margin: 2px 0 11px;
+  }
+
+  /* inputs are sunken — the opposite of a button */
+  #name-input, #code-input {
+    width: 100%; box-sizing: border-box; padding: 12px 14px;
+    border-radius: var(--tj-radius); border: 3px solid var(--tj-outline);
+    background: var(--tj-surface-lowest); color: #fff;
+    font-family: var(--tj-font-body); font-weight: 600; font-size: 17px;
+    outline: none; box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.45);
+  }
+  #code-input { text-align: center; letter-spacing: 3px; }
+  #name-input:focus, #code-input:focus { border-color: var(--tj-secondary); }
+  #name-save {
+    margin-top: 14px; width: 100%; padding: 13px;
+    border: 4px solid var(--tj-outline); border-radius: var(--tj-radius);
+    background: var(--tj-primary); color: #fff;
+    font-family: var(--tj-font); font-weight: 900; font-size: 18px;
+    text-transform: uppercase; cursor: pointer;
+    box-shadow: 0 4px 0 0 var(--tj-outline);
+  }
+  #name-save:active { transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-outline); }
+  #code-msg {
+    min-height: 20px; margin: 14px 0 0; font-size: 15px; line-height: 1.4;
+    font-family: var(--tj-font-body); font-weight: 600;
+  }
+  /* With no message to show it still reserved its height and both margins,
+     which left a gap under REDEEM twice the size of any other modal's. */
+  #code-msg:empty { min-height: 0; margin: 0; }
+
+  /* ---- daily bonus --------------------------------------------------------
+     The week is six day tiles plus the day-7 payout plate. Every one of them
+     is built from the same recipe as the buttons above: flat fill, thick
+     outline, and a hard offset edge underneath, so the row reads as part of
+     the game rather than a chart dropped into it. A banked day is struck in
+     the reward colour with the dark ink that belongs on it. */
+  .d-track { position: relative; padding: 2px 0 6px; }
+  .d-chips { position: relative; display: flex; gap: 7px; justify-content: center; }
+  .d-chip {
+    /* share the row rather than overflow it — six across on any phone width */
+    position: relative; box-sizing: border-box; flex: 1 1 0; min-width: 0;
+    max-width: 48px; padding: 8px 0 7px;
+    border-radius: 12px; border: 2px solid var(--tj-outline);
+    background: var(--tj-surface-high);
+    box-shadow: 0 3px 0 0 var(--tj-surface-lowest);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .d-chip .d-n {
+    font-family: var(--tj-font); font-weight: 800; font-size: 9px;
+    letter-spacing: 0.04em; color: var(--tj-tertiary); line-height: 1;
+  }
+  .d-chip .d-v {
+    font-family: var(--tj-font); font-weight: 900; font-size: 16px;
+    color: var(--tj-on-surface); line-height: 1;
+  }
+  .d-chip .d-b {
+    font-family: var(--tj-font); font-weight: 800; font-size: 9px;
+    color: var(--tj-tertiary); line-height: 1;
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+  /* banked days are struck in the reward colour, edge included */
+  .d-chip.done {
+    background: var(--tj-secondary); border-color: var(--tj-secondary);
+    box-shadow: 0 3px 0 0 #96690a;
+  }
+  .d-chip.done .d-v, .d-chip.done .d-n, .d-chip.done .d-b { color: var(--tj-surface); }
+  .d-chip.done .d-n { font-size: 13px; }
+  /* today keeps its own edge and adds a static gold ring — it does not need to
+     pulse to be found */
+  .d-chip.now {
+    border-color: var(--tj-secondary);
+    box-shadow: 0 3px 0 0 var(--tj-surface-lowest), 0 0 0 3px rgba(251, 180, 0, 0.5);
+  }
+  .d-chip.won { animation: dStamp 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+  @keyframes dStamp {
+    0% { transform: scale(1.8) rotate(-10deg); opacity: 0.2; }
+    60% { transform: scale(0.96); opacity: 1; }
+    100% { transform: none; }
+  }
+
+  /* day 7 — the same tile, given the whole width */
+  .d-jack {
+    position: relative; overflow: hidden; margin: 12px 0 0; padding: 11px 14px;
+    border-radius: 14px; border: 2px solid var(--tj-outline);
+    background: var(--tj-surface-high);
+    box-shadow: 0 3px 0 0 var(--tj-surface-lowest);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .d-jack .d-j-label {
+    font-family: var(--tj-font); font-weight: 800; font-size: 12px;
+    letter-spacing: 0.08em; color: var(--tj-tertiary);
+    text-align: left; text-transform: uppercase; line-height: 1;
+  }
+  .d-jack .d-j-val {
+    font-family: var(--tj-font); font-weight: 900; font-size: 19px;
+    color: var(--tj-secondary-light); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px; line-height: 1;
+  }
+  /* the game's own Trump Buck art, not an emoji */
+  .d-bill { display: block; width: 22px; height: auto; image-rendering: auto; }
+  .d-chip .d-b .d-bill { width: 13px; }
+  .d-jack.now, .d-jack.done {
+    background: var(--tj-secondary); border-color: var(--tj-secondary);
+    box-shadow: 0 3px 0 0 #96690a;
+  }
+  .d-jack.now .d-j-label, .d-jack.done .d-j-label,
+  .d-jack.now .d-j-val, .d-jack.done .d-j-val { color: var(--tj-secondary-ink); }
+  /* light sweeping off the reward while it is there to be taken */
+  .d-jack.now::after {
+    content: ''; position: absolute; top: -60%; left: -60%; width: 40%; height: 220%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: rotate(18deg); animation: dSweep 2.8s ease-in-out infinite;
+  }
+  @keyframes dSweep { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+
+  /* Its own line, not a caption stuck to the jackpot bar above it. Needs the
+     #daily-modal prefix to outweigh the `.m-sub` margin above. */
+  /* the status line speaks in the game's label voice — mono caps, letterspaced
+     — rather than lowercase body copy */
+  #daily-modal #daily-msg {
+    margin: 15px 0 4px; min-height: 18px;
+    font-family: var(--tj-font-body); font-weight: 600; font-size: 14px;
+    letter-spacing: 0; text-transform: none; color: var(--tj-on-surface);
+  }
+  #daily-modal #daily-msg.win { color: var(--tj-secondary-light); font-size: 15px; font-weight: 700; }
+  #daily-modal #daily-msg.bad { color: var(--tj-error); }
+
+  /* coins thrown out of the panel when a claim lands */
+  .d-burst { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .d-burst i {
+    position: absolute; left: 50%; top: 62%; width: 14px; height: 14px;
+    border-radius: 50%; margin: -7px 0 0 -7px;
+    background: radial-gradient(circle at 34% 28%, #ffe9a8, var(--tj-secondary) 48%, #a06d00);
+    border: 2px solid var(--tj-outline);
+    animation: dCoin 0.95s cubic-bezier(0.15, 0.75, 0.3, 1) forwards;
+  }
+  @keyframes dCoin {
+    0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+    12% { opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(1) rotate(var(--r)); opacity: 0; }
+  }
+
+  /* On a desktop window the 330px panel is a postage stamp in the middle of a
+     large screen. Everything steps up together so the proportions hold — this
+     is a scale change, not a different layout. */
+  @media (min-width: 720px) and (min-height: 620px) {
+    #name-modal .box, #account-modal .box, #settings-modal .box, #daily-modal .box {
+      width: 430px; padding: 30px 32px; border-radius: 28px;
+    }
+    #name-modal h3, #account-modal h3, #settings-modal h3, #daily-modal h3 {
+      font-size: 34px; margin-bottom: 14px;
+    }
+    #name-modal .m-close, #account-modal .m-close,
+    #settings-modal .m-close, #daily-modal .m-close {
+      top: 21px; right: 18px; font-size: 38px; width: 42px; height: 42px;
+    }
+    .m-sub { font-size: 16px; margin-bottom: 20px; }
+    .m-label { font-size: 12px; margin-bottom: 14px; }
+    .m-btn { font-size: 22px; padding: 16px; margin-top: 13px; border-radius: 20px; }
+    .m-btn.narrow { font-size: 18px; padding: 13px; }
+    .m-btn.text { font-size: 17px; padding: 11px; }
+    #name-input, #code-input { font-size: 20px; padding: 14px 16px; }
+    #name-save { font-size: 22px; padding: 16px; }
+    #pfp-grid { gap: 13px; }
+    #pfp-grid .pfp-row { gap: 13px; }
+    #pfp-grid .pfp { width: 62px; height: 62px; }
+    .d-chip { max-width: 58px; padding: 9px 0 8px; }
+    .d-chip .d-v { font-size: 18px; }
+    .d-chip .d-n { font-size: 11px; }
+    .d-jack { padding: 13px 16px; }
+    .d-jack .d-j-val { font-size: 21px; }
+    .d-jack .d-j-label { font-size: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #name-modal .box, #account-modal .box, #settings-modal .box, #daily-modal .box,
+    .d-chip.now, .d-jack.now::after, .d-chip.won, .d-burst i { animation: none; }
+  }
+
+  /* profile-picture picker */
   #pfp-grid { display: flex; flex-direction: column; gap: 10px; align-items: center; }
   #pfp-grid .pfp-row { display: flex; gap: 10px; justify-content: center; }
   #pfp-grid .pfp {
-    width: 46px; height: 46px; border-radius: 50%; overflow: hidden; padding: 0;
-    border: 2px solid #3a4a6a; background: #0a0e22; cursor: pointer; flex: 0 0 auto;
+    width: 48px; height: 48px; border-radius: 50%; overflow: hidden; padding: 0;
+    border: 3px solid var(--tj-outline); background: var(--tj-surface-lowest);
+    cursor: pointer; flex: 0 0 auto;
   }
-  #pfp-grid .pfp img {
-    width: 118%; height: auto; display: block; margin: -2% 0 0 -9%;
-  }
-  #pfp-grid .pfp.sel { border-color: #f5c542; box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.45); }
+  #pfp-grid .pfp img { width: 118%; height: auto; display: block; margin: -2% 0 0 -9%; }
+  #pfp-grid .pfp.sel { border-color: var(--tj-secondary); box-shadow: 0 0 0 3px rgba(251, 180, 0, 0.4); }
+
   /* boot splash — shown instantly (pure CSS, no assets to wait on except the
      small icon), removed by the Menu scene once the game is ready to render */
   #splash {
@@ -195,7 +358,7 @@
     align-items: center;
     justify-content: center;
     gap: 14px;
-    background: radial-gradient(1200px 800px at 50% 20%, #16203f 0%, #0a0e22 55%, #05070f 100%);
+    background: radial-gradient(1200px 800px at 50% 20%, #112a4c 0%, #00132d 55%, #000e24 100%);
     opacity: 1;
     transition: opacity 0.35s ease;
   }
@@ -208,14 +371,14 @@
     animation: splash-pulse 1.6s ease-in-out infinite;
   }
   #splash .s-title {
-    font-family: "Luckiest Guy", "Arial Black", Arial, sans-serif;
+    font-family: "Anybody", "Arial Black", Arial, sans-serif; font-weight: 900;
     font-size: 34px;
-    color: #f5c542;
+    color: #fbb400;
     letter-spacing: 2px;
-    text-shadow: 0 3px 0 #71301f;
+    text-shadow: 0 4px 0 #1d3557;
   }
   #splash .s-sub {
-    font-family: "Luckiest Guy", "Arial Black", Arial, sans-serif;
+    font-family: "Anybody", "Arial Black", Arial, sans-serif; font-weight: 900;
     font-size: 15px;
     color: #ffe9c9;
     letter-spacing: 3px;
@@ -226,8 +389,8 @@
     height: 30px;
     margin-top: 10px;
     border-radius: 50%;
-    border: 4px solid rgba(245, 197, 66, 0.25);
-    border-top-color: #f5c542;
+    border: 4px solid rgba(251, 180, 0, 0.28);
+    border-top-color: #fbb400;
     animation: splash-spin 0.9s linear infinite;
   }
   @keyframes splash-spin { to { transform: rotate(360deg); } }
@@ -268,23 +431,29 @@
 <div id="account-modal">
   <div class="box" id="account-box"></div>
 </div>
+<div id="daily-modal">
+  <div class="box" id="daily-box"></div>
+</div>
 <div id="settings-modal">
   <div class="box">
     <button class="m-close" id="settings-close">&times;</button>
     <h3>SETTINGS</h3>
     <button class="m-btn ghost" id="mute-toggle">🔊 SOUND: ON</button>
-    <button class="m-btn ghost" id="boost-side-toggle" style="margin-top: 8px;">🚀 BOOST: RIGHT</button>
+    <button class="m-btn ghost" id="boost-side-toggle">🚀 BOOST: RIGHT</button>
     <p class="m-sub" style="margin-top: 18px;">Have a friend code? Enter it to unlock a bonus skin.</p>
     <input id="code-input" maxlength="16" placeholder="enter code" autocomplete="off" inputmode="numeric">
     <button class="m-btn danger" id="code-redeem">REDEEM</button>
     <p class="m-sub" id="code-msg"></p>
+    <button class="m-btn text" id="settings-done">CLOSE</button>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="src/config/theme.js"></script>
 <script src="src/config/firebase-config.js"></script>
 <script src="src/config/catalog.js"></script>
 <script src="src/systems/save.js"></script>
 <script src="src/systems/runguard.js"></script>
+<script src="src/systems/daily.js"></script>
 <script src="src/systems/audio.js"></script>
 <script src="src/systems/voice.js"></script>
 <script src="src/gfx/textures.js"></script>
