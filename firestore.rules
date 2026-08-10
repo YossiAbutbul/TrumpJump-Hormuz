@@ -16,6 +16,9 @@ rules_version = '2';
 //
 // Scope of protection (intentional, for a casual game):
 //   - `best` is server-written only; a browser cannot set it at all
+//   - `streak` / `lastClaimDay` likewise: the daily bonus is paid by
+//     api/daily-claim.js against the server clock, so a wound-forward device
+//     clock cannot farm it
 //   - a user can only read/write sanely-shaped data in their OWN doc
 //   - no other user's doc can be written
 //   - absurd one-shot values (bank = 999999999) are rejected
@@ -46,6 +49,8 @@ service cloud.firestore {
       function hasDoc() { return resource != null; }
       function oldBest() { return hasDoc() ? resource.data.get('best', 0) : 0; }
       function oldBank() { return hasDoc() ? resource.data.get('bank', 0) : 0; }
+      function oldStreak() { return hasDoc() ? resource.data.get('streak', 0) : 0; }
+      function oldClaimDay() { return hasDoc() ? resource.data.get('lastClaimDay', '') : ''; }
 
       // Seconds of server time since this doc was last written. Every write
       // stamps updatedAt with serverTimestamp(), so this cannot be faked from
@@ -66,7 +71,8 @@ service cloud.firestore {
       function fieldsOk() {
         return d().keys().hasOnly([
           'bank','bills','boosts','best','bestUid','maps','ships','skins','up',
-          'ship','map','skin','pfp','boostSide','username','usernameLower','updatedAt'
+          'ship','map','skin','pfp','boostSide','username','usernameLower','updatedAt',
+          'streak','lastClaimDay'
         ]);
       }
 
@@ -89,6 +95,16 @@ service cloud.firestore {
       function bestOk() {
         let s = d().get('best', 0);
         return s is int && s == oldBest();
+      }
+
+      // daily sign-in streak: SERVER ONLY, same deal as `best`. If the browser
+      // could write these it could also pay itself the bonus — the payout and
+      // the streak move together in api/daily-claim.js, against the server
+      // clock, so winding a device forward buys nothing. Client saves are
+      // setDoc(merge), which carries both fields through unchanged.
+      function dailyOk() {
+        return d().get('streak', 0) == oldStreak()
+            && d().get('lastClaimDay', '') == oldClaimDay();
       }
 
       // every write must stamp the clock the rate checks above depend on
@@ -119,6 +135,7 @@ service cloud.firestore {
                             && stampOk()
                             && bankOk()
                             && bestOk()
+                            && dailyOk()
                             && typesOk();
       allow delete: if false;
     }

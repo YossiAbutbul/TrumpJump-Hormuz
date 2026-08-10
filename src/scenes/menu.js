@@ -241,6 +241,32 @@ class MenuScene extends Phaser.Scene {
       if (window.settingsModal) window.settingsModal();
     });
 
+    // daily bonus (bottom-right), mirroring the settings gear. The red dot —
+    // and the nudge tween behind it — mean there is a bonus waiting to claim.
+    const daily = this.add.container(W - 40, H - 38).setDepth(6);
+    daily.add(this.add.circle(0, 3, 23, T.outline));  // the hard edge it sits on
+    const dailyBg = this.add.circle(0, 0, 23, T.surfaceHigh)
+      .setStrokeStyle(4, T.outlineVariant, 1)
+      .setInteractive({ useHandCursor: true });
+    daily.add(dailyBg);
+    daily.add(this.add.text(0, 1, '🎁', { fontSize: '20px' }).setOrigin(0.5));
+    this.dailyDot = this.add.circle(16, -16, 6, T.primaryLight)
+      .setStrokeStyle(3, T.outline, 1)
+      .setVisible(false);
+    daily.add(this.dailyDot);
+    this.dailyPulse = this.tweens.add({
+      targets: daily, scale: 1.12, duration: 900,
+      yoyo: true, repeat: -1, ease: 'Sine.inOut', paused: true,
+    });
+    dailyBg.on('pointerover', () => daily.setScale(1.1));
+    dailyBg.on('pointerout', () => daily.setScale(1));
+    dailyBg.on('pointerup', () => {
+      if (window.SFX && window.SFX.click) window.SFX.click();
+      if (window.DAILY) window.DAILY.open();
+    });
+    this.dailyBtn = daily;
+    this.refreshDaily();
+
     // account chip (top center) + live auth updates. Track the current user so
     // a sign-in/out (identity change) rebuilds the whole menu — character,
     // fleet, map and pills all reflect the newly loaded / reset save.
@@ -442,6 +468,30 @@ class MenuScene extends Phaser.Scene {
     this.refreshStats();
     this.refreshWelcome();
     this.updateAccountChip();
+    this.refreshDaily();
+
+    // A bonus waiting is worth showing rather than hoping the player spots the
+    // dot — but only once per app open, and never on top of the name prompt.
+    const st = window.DAILY && window.DAILY.state();
+    if (st && st.claimable && !this._prompting && !window._dailyShown
+        && fb && fb.profileLoaded && fb.profile && fb.profile.username) {
+      window._dailyShown = true;
+      this.time.delayedCall(700, () => { if (window.DAILY) window.DAILY.open(); });
+    }
+  }
+
+  // red dot + nudge while today's bonus is unclaimed
+  refreshDaily() {
+    if (!this.dailyDot || !window.DAILY) return;
+    const claimable = window.DAILY.state().claimable;
+    this.dailyDot.setVisible(claimable);
+    if (!this.dailyPulse) return;
+    if (claimable) {
+      this.dailyPulse.resume();
+    } else {
+      this.dailyPulse.pause();
+      if (this.dailyBtn) this.dailyBtn.setScale(1);
+    }
   }
 
   refreshWelcome() {
