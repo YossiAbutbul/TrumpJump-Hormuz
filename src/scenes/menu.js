@@ -217,10 +217,13 @@ class MenuScene extends Phaser.Scene {
       window.SFX.init();
       this.scene.start('Shop');
     }, { color: T.secondary, size: 22, radius: 14 });
+    // Face is surfaceBright, not surfaceHighest: the latter is the very same
+    // navy as the outline every button carries, so the rim vanished into the
+    // fill and the button read as a flat slab. The border is untouched.
     uiButton(this, W / 2, H - 88, bw - 92, 46, 'LEADERBOARD', () => {
       window.SFX.init();
       this.scene.start('Leaderboard');
-    }, { color: T.surfaceHighest, size: 18, radius: 14 });
+    }, { color: T.surfaceBright, size: 18, radius: 14 });
 
     this.add.text(W / 2, H - 38, 'arrows / A D / touch • P: pause', {
       fontFamily: window.FONT_LABEL, fontSize: '13px', color: '#e4bebc',
@@ -228,12 +231,11 @@ class MenuScene extends Phaser.Scene {
 
     // settings gear (bottom-left) — enter friend codes to unlock secret skins
     const gear = this.add.container(40, H - 38).setDepth(6);
-    gear.add(this.add.circle(0, 3, 23, T.outline));   // the hard edge it sits on
-    const gearBg = this.add.circle(0, 0, 23, T.surfaceHigh)
-      .setStrokeStyle(4, T.outlineVariant, 1)
+    const gearBg = this.add.circle(0, 0, 17, T.surfaceHighest)
+      .setStrokeStyle(2, T.secondary, 1)
       .setInteractive({ useHandCursor: true });
     gear.add(gearBg);
-    gear.add(this.add.text(0, 1, '⚙', { fontSize: '21px' }).setOrigin(0.5));
+    gear.add(this.add.text(0, 1, '⚙', { fontSize: '17px' }).setOrigin(0.5));
     gearBg.on('pointerover', () => gear.setScale(1.1));
     gearBg.on('pointerout', () => gear.setScale(1));
     gearBg.on('pointerup', () => {
@@ -244,14 +246,13 @@ class MenuScene extends Phaser.Scene {
     // daily bonus (bottom-right), mirroring the settings gear. The red dot —
     // and the nudge tween behind it — mean there is a bonus waiting to claim.
     const daily = this.add.container(W - 40, H - 38).setDepth(6);
-    daily.add(this.add.circle(0, 3, 23, T.outline));  // the hard edge it sits on
-    const dailyBg = this.add.circle(0, 0, 23, T.surfaceHigh)
-      .setStrokeStyle(4, T.outlineVariant, 1)
+    const dailyBg = this.add.circle(0, 0, 17, T.surfaceHighest)
+      .setStrokeStyle(2, T.secondary, 1)
       .setInteractive({ useHandCursor: true });
     daily.add(dailyBg);
-    daily.add(this.add.text(0, 1, '🎁', { fontSize: '20px' }).setOrigin(0.5));
-    this.dailyDot = this.add.circle(16, -16, 6, T.primaryLight)
-      .setStrokeStyle(3, T.outline, 1)
+    daily.add(this.add.text(0, 1, '🎁', { fontSize: '17px' }).setOrigin(0.5));
+    this.dailyDot = this.add.circle(12, -12, 5, T.primaryLight)
+      .setStrokeStyle(2, T.outline, 1)
       .setVisible(false);
     daily.add(this.dailyDot);
     this.dailyPulse = this.tweens.add({

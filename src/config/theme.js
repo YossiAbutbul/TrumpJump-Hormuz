@@ -18,7 +18,10 @@ window.THEME = {
   surfaceLow: 0x001b3c,
   surfaceContainer: 0x032041,
   surfaceHigh: 0x112a4c,
-  surfaceHighest: 0x1d3557, // raised panels, secondary buttons
+  surfaceHighest: 0x1d3557, // raised panels
+  surfaceBright: 0x223a5c,  // a face for buttons that carry the navy outline —
+                            // it has to sit LIGHTER than `outline`, or the rim
+                            // disappears into the fill and the button reads flat
   outline: 0x1d3557,        // THE outline — every element gets this, 3-4px
   outlineVariant: 0x5b403f, // the warm outline used on chips and the HUD frame
 

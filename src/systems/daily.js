@@ -79,13 +79,38 @@ const el = (tag, cls, text) => {
   return n;
 };
 
-// "1.5K" — chips are 38px wide, four digits don't fit
+// "1.5K" — a day tile is ~46px wide, four digits don't fit
 const short = (n) => (n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'K' : String(n));
 
+// The Trump Buck the player actually collects, rather than an emoji: the note
+// is drawn procedurally into a Phaser canvas texture, so it can be lifted out
+// as an image and reused here. Exporting is not cheap, hence the cache; if the
+// texture is not built yet (modal opened before the first scene) it falls back
+// to the emoji rather than showing nothing.
+let billDataUrl;
+function billIcon(cls) {
+  if (billDataUrl === undefined) {
+    billDataUrl = null;
+    const t = window.game && window.game.textures;
+    if (t && t.exists('bill')) {
+      const src = t.get('bill').getSourceImage();
+      if (src && src.toDataURL) {
+        try { billDataUrl = src.toDataURL(); } catch (e) { billDataUrl = null; }
+      }
+    }
+  }
+  if (!billDataUrl) return document.createTextNode('💵');
+  const im = document.createElement('img');
+  im.className = cls;
+  im.src = billDataUrl;
+  im.alt = 'Trump Bucks';
+  return im;
+}
+
 // The modal is built in JS (like the account modal) so index.html only has to
-// carry the empty shell. Layout: title, streak line, six chips on a gold rail,
-// the day-7 bar, a status line, then the same m-btn buttons the other modals
-// use — this should read as another panel of the game, not a visitor.
+// carry the empty shell. Layout: title, streak line, six day tiles, the day-7
+// plate, a status line, then the same m-btn buttons the other modals use —
+// this should read as another panel of the game, not a visitor.
 function renderDailyModal() {
   const modal = document.getElementById('daily-modal');
   const box = document.getElementById('daily-box');
@@ -139,16 +164,10 @@ function renderDailyModal() {
         : st.streak > 0 ? `🔥 ${st.streak} day streak — keep it alive`
         : 'come back every day for a bigger payout'));
 
-    // ---- the six chips, strung on a rail that fills as the week is banked
+    // ---- the six day tiles. No connecting rail: a banked day is already
+    // struck in the reward colour, so the row shows progress on its own and
+    // the rail only added a line of debris between the tiles.
     const track = el('div', 'd-track');
-    const rail = el('div', 'd-rail');
-    const fill = el('span');
-    const banked = rewards.slice(0, 6).filter((_, i) => isDone(i + 1)).length;
-    // the rail runs chip-centre to chip-centre, so one banked day is 0%
-    fill.style.width = (banked > 1 ? ((banked - 1) / 5) * 100 : 0) + '%';
-    rail.appendChild(fill);
-    track.appendChild(rail);
-
     const chips = el('div', 'd-chips');
     rewards.slice(0, 6).forEach((r, i) => {
       const day = i + 1;
@@ -157,9 +176,13 @@ function renderDailyModal() {
         + (done ? ' done' : '')
         + (day === st.pos && !st.claimedToday ? ' now' : '')
         + (msg && msg.ok && day === st.pos ? ' won' : ''));
-      chip.appendChild(el('span', 'd-n', done ? '✓' : 'D' + day));
+      chip.appendChild(el('span', 'd-n', done ? '✓' : 'DAY ' + day));
       chip.appendChild(el('span', 'd-v', short(r.coins)));
-      if (r.bills) chip.appendChild(el('span', 'd-b', '+' + r.bills + '💵'));
+      if (r.bills) {
+        const b = el('span', 'd-b', '+' + r.bills);
+        b.appendChild(billIcon('d-bill'));
+        chip.appendChild(b);
+      }
       chips.appendChild(chip);
     });
     track.appendChild(chips);
@@ -171,8 +194,9 @@ function renderDailyModal() {
       + (jackDone ? ' done' : '')
       + (st.pos === 7 && !st.claimedToday ? ' now' : ''));
     jack.appendChild(el('span', 'd-j-label', jackDone ? 'day 7 · collected' : 'day 7 · jackpot'));
-    jack.appendChild(el('span', 'd-j-val',
-      `${short(jackpot.coins)} + ${jackpot.bills} 💵`));
+    const jval = el('span', 'd-j-val', `${short(jackpot.coins)} + ${jackpot.bills}`);
+    jval.appendChild(billIcon('d-bill'));
+    jack.appendChild(jval);
     box.appendChild(jack);
 
     const note = el('p', 'm-sub');
@@ -186,7 +210,7 @@ function renderDailyModal() {
       b.innerHTML = '<span class="gi">G</span> SIGN IN &amp; START';
       b.onclick = () => { close(); if (window.FB && window.FB.signIn) window.FB.signIn(); };
       box.appendChild(b);
-      const later = el('button', 'm-btn ghost', 'NOT NOW');
+      const later = el('button', 'm-btn text', 'NOT NOW');
       later.onclick = close;
       box.appendChild(later);
       return;
@@ -202,11 +226,12 @@ function renderDailyModal() {
       paint();
       tick = setInterval(paint, 1000);
     } else {
-      // today's payout is on the button already — this line is the hook for
-      // coming back, so it shows what tomorrow is worth (day 7 wraps to day 1)
+      // Today's payout is on the button already — this line is the hook for
+      // coming back, so it shows what tomorrow is worth (day 7 wraps to day 1).
+      // Kept short: set in letterspaced mono caps, the long form ran the whole
+      // width, and the tile for that day already shows any bonus Bucks.
       const next = rewards[st.pos % rewards.length];
-      note.textContent = `tomorrow: ${next.coins} coins`
-        + (next.bills ? ` + ${next.bills} Trump Buck${next.bills > 1 ? 's' : ''}` : '');
+      note.textContent = `tomorrow · ${next.coins} coins`;
     }
 
     const spent = st.claimedToday;
@@ -238,7 +263,7 @@ function renderDailyModal() {
     };
     box.appendChild(claim);
 
-    const later = el('button', 'm-btn ghost', 'CLOSE');
+    const later = el('button', 'm-btn text', 'CLOSE');
     later.onclick = close;
     box.appendChild(later);
   };

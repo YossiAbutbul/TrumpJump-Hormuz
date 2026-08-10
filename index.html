@@ -71,16 +71,21 @@
     from { transform: translateY(14px) scale(0.94); opacity: 0; }
     to { transform: none; opacity: 1; }
   }
+  /* Just the glyph — a disc around it read as a third button competing with
+     the real ones below. `top` centres it on the title optically, not
+     geometrically: the heading is all caps with a 4px hard shadow under it, so
+     its glyphs sit noticeably higher than its line box and matching the box
+     centre leaves the × looking low. */
   #name-modal .m-close, #account-modal .m-close,
   #settings-modal .m-close, #daily-modal .m-close {
-    position: absolute; top: 8px; right: 10px; width: 30px; height: 30px;
-    background: var(--tj-surface-highest); border: 3px solid var(--tj-outline);
-    border-radius: 999px; color: var(--tj-on-surface); font-size: 17px;
-    line-height: 1; cursor: pointer; font-family: var(--tj-font-body); padding: 0;
+    position: absolute; top: 17px; right: 12px; width: 34px; height: 34px;
+    background: none; border: 0; border-radius: 0;
+    color: var(--tj-tertiary); font-size: 30px; line-height: 1;
+    cursor: pointer; font-family: var(--tj-font-body); padding: 0;
   }
   #name-modal .m-close:hover, #account-modal .m-close:hover,
   #settings-modal .m-close:hover, #daily-modal .m-close:hover {
-    background: var(--tj-primary); color: #fff;
+    color: var(--tj-secondary);
   }
   #name-modal h3, #account-modal h3, #settings-modal h3, #daily-modal h3 {
     font-family: var(--tj-font); font-weight: 900; font-size: 26px;
@@ -111,13 +116,48 @@
   .m-btn.google { background: #4285f4; }
   .m-btn.danger { background: var(--tj-primary); }
   .m-btn.gold { background: var(--tj-secondary); color: var(--tj-secondary-ink); }
-  .m-btn.ghost { background: var(--tj-surface-highest); color: var(--tj-on-surface); }
+  /* surfaceBright, not surfaceHighest: the latter is the same navy as the
+     4px outline these carry, so the rim vanished into the fill */
+  .m-btn.ghost { background: var(--tj-surface-bright); color: var(--tj-on-surface); }
   .m-btn[disabled] { opacity: 0.5; cursor: default; }
   .m-btn[disabled]:active { transform: none; box-shadow: 0 4px 0 0 var(--tj-outline); }
   .m-btn .gi {
     width: 20px; height: 20px; background: #fff; border-radius: 4px;
     display: inline-flex; align-items: center; justify-content: center;
     color: #4285f4; font-weight: 700; font-family: var(--tj-font-body); font-size: 13px;
+  }
+  /* Hierarchy by size, not just colour. The action you came to perform is full
+     width and loud; a destructive one is narrower and quieter, so sign-out
+     stops being the brightest thing in the panel; dismissal is quietest. */
+  .m-btn.narrow {
+    width: 76%; margin-left: auto; margin-right: auto;
+    font-size: 15px; padding: 11px;
+  }
+  .m-btn.quiet { background: var(--tj-surface-bright); color: var(--tj-error); }
+  /* The dark buttons carry the same pressable edge as the gold one, but in a
+     deeper colour — against the panel, an outline-navy edge under a navy
+     button is invisible, so they looked flat next to it. */
+  .m-btn.quiet, .m-btn.ghost, .m-btn.text {
+    box-shadow: 0 4px 0 0 var(--tj-surface-lowest);
+  }
+  .m-btn.quiet:active, .m-btn.ghost:active, .m-btn.text:active {
+    transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-surface-lowest);
+  }
+  /* the quietest step still gets an outline and a press — with none, it read
+     as stray text rather than something you could tap */
+  .m-btn.text {
+    width: 56%; margin: 14px auto 0; padding: 9px;
+    background: var(--tj-surface-container); color: var(--tj-tertiary);
+    border: 2px solid rgba(158, 207, 209, 0.4);
+    font-size: 14px; letter-spacing: 0.06em;
+  }
+  .m-btn.text:hover { color: var(--tj-on-surface); border-color: var(--tj-tertiary); }
+
+  /* section heading inside a modal */
+  .m-label {
+    font-family: var(--tj-font-label); font-weight: 700; font-size: 10px;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--tj-tertiary); margin: 2px 0 11px;
   }
 
   /* inputs are sunken — the opposite of a button */
@@ -140,52 +180,55 @@
   }
   #name-save:active { transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-outline); }
   #code-msg {
-    min-height: 18px; margin: 12px 0 0; font-size: 13px;
+    min-height: 20px; margin: 14px 0 0; font-size: 15px; line-height: 1.4;
     font-family: var(--tj-font-body); font-weight: 600;
   }
+  /* With no message to show it still reserved its height and both margins,
+     which left a gap under REDEEM twice the size of any other modal's. */
+  #code-msg:empty { min-height: 0; margin: 0; }
 
   /* ---- daily bonus --------------------------------------------------------
-     The week is six chips on a rail plus the day-7 payout bar. A banked day is
-     filled with the reward colour; today wears a pulsing ring. */
-  .d-track { position: relative; padding: 2px 0; }
-  /* insets are half a chip (a twelfth of a six-across row), so the rail runs
-     chip-centre to chip-centre however wide the chips end up */
-  .d-rail {
-    position: absolute; left: 8.33%; right: 8.33%; top: 50%; height: 5px;
-    margin-top: -2.5px; border-radius: 3px; background: var(--tj-surface-lowest);
-    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
-  }
-  .d-rail span {
-    display: block; height: 100%; border-radius: 3px; background: var(--tj-secondary);
-    transition: width 0.5s cubic-bezier(0.3, 1, 0.4, 1);
-  }
-  .d-chips { position: relative; display: flex; gap: 6px; justify-content: center; }
+     The week is six day tiles plus the day-7 payout plate. Every one of them
+     is built from the same recipe as the buttons above: flat fill, thick
+     outline, and a hard offset edge underneath, so the row reads as part of
+     the game rather than a chart dropped into it. A banked day is struck in
+     the reward colour with the dark ink that belongs on it. */
+  .d-track { position: relative; padding: 2px 0 6px; }
+  .d-chips { position: relative; display: flex; gap: 7px; justify-content: center; }
   .d-chip {
     /* share the row rather than overflow it — six across on any phone width */
     position: relative; box-sizing: border-box; flex: 1 1 0; min-width: 0;
-    max-width: 46px; padding: 7px 0 6px;
-    border-radius: var(--tj-radius-chip); border: 3px solid var(--tj-outline);
+    max-width: 48px; padding: 8px 0 7px;
+    border-radius: 12px; border: 2px solid var(--tj-outline);
     background: var(--tj-surface-high);
-    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    box-shadow: 0 3px 0 0 var(--tj-surface-lowest);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
   }
   .d-chip .d-n {
-    font-family: var(--tj-font-label); font-weight: 700; font-size: 9px;
-    color: var(--tj-tertiary);
+    font-family: var(--tj-font); font-weight: 800; font-size: 9px;
+    letter-spacing: 0.04em; color: var(--tj-tertiary); line-height: 1;
   }
   .d-chip .d-v {
-    font-family: var(--tj-font); font-weight: 900; font-size: 14px;
-    color: var(--tj-on-surface); line-height: 1.1;
+    font-family: var(--tj-font); font-weight: 900; font-size: 16px;
+    color: var(--tj-on-surface); line-height: 1;
   }
-  .d-chip .d-b { font-family: var(--tj-font-label); font-weight: 700; font-size: 8px; color: #8ff0a8; }
-  /* banked days take the reward colour, with the dark ink that belongs on it */
-  .d-chip.done { background: var(--tj-secondary); border-color: var(--tj-outline); }
-  .d-chip.done .d-v, .d-chip.done .d-n { color: var(--tj-secondary-ink); }
-  .d-chip.done .d-n { font-size: 12px; }
-  .d-chip.done .d-b { color: #2e5d0f; }
-  .d-chip.now { border-color: var(--tj-secondary); animation: dChip 1.8s ease-in-out infinite; }
-  @keyframes dChip {
-    0%, 100% { box-shadow: 0 0 0 2px rgba(251, 180, 0, 0.4); }
-    50% { box-shadow: 0 0 0 4px rgba(251, 180, 0, 0.75); }
+  .d-chip .d-b {
+    font-family: var(--tj-font); font-weight: 800; font-size: 9px;
+    color: var(--tj-tertiary); line-height: 1;
+    display: inline-flex; align-items: center; gap: 2px;
+  }
+  /* banked days are struck in the reward colour, edge included */
+  .d-chip.done {
+    background: var(--tj-secondary); border-color: var(--tj-secondary);
+    box-shadow: 0 3px 0 0 #96690a;
+  }
+  .d-chip.done .d-v, .d-chip.done .d-n, .d-chip.done .d-b { color: var(--tj-surface); }
+  .d-chip.done .d-n { font-size: 13px; }
+  /* today keeps its own edge and adds a static gold ring — it does not need to
+     pulse to be found */
+  .d-chip.now {
+    border-color: var(--tj-secondary);
+    box-shadow: 0 3px 0 0 var(--tj-surface-lowest), 0 0 0 3px rgba(251, 180, 0, 0.5);
   }
   .d-chip.won { animation: dStamp 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
   @keyframes dStamp {
@@ -194,22 +237,31 @@
     100% { transform: none; }
   }
 
-  /* day 7 — the big one, given the whole width */
+  /* day 7 — the same tile, given the whole width */
   .d-jack {
-    position: relative; overflow: hidden; margin: 14px 0 0; padding: 10px 14px;
-    border-radius: var(--tj-radius); border: 3px solid var(--tj-outline);
+    position: relative; overflow: hidden; margin: 12px 0 0; padding: 11px 14px;
+    border-radius: 14px; border: 2px solid var(--tj-outline);
     background: var(--tj-surface-high);
+    box-shadow: 0 3px 0 0 var(--tj-surface-lowest);
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
   }
   .d-jack .d-j-label {
-    font-family: var(--tj-font-label); font-weight: 700; font-size: 10px;
-    color: var(--tj-tertiary); text-align: left; text-transform: uppercase;
+    font-family: var(--tj-font); font-weight: 800; font-size: 12px;
+    letter-spacing: 0.08em; color: var(--tj-tertiary);
+    text-align: left; text-transform: uppercase; line-height: 1;
   }
   .d-jack .d-j-val {
-    font-family: var(--tj-font); font-weight: 900; font-size: 17px;
+    font-family: var(--tj-font); font-weight: 900; font-size: 19px;
     color: var(--tj-secondary-light); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px; line-height: 1;
   }
-  .d-jack.now, .d-jack.done { background: var(--tj-secondary); }
+  /* the game's own Trump Buck art, not an emoji */
+  .d-bill { display: block; width: 22px; height: auto; image-rendering: auto; }
+  .d-chip .d-b .d-bill { width: 13px; }
+  .d-jack.now, .d-jack.done {
+    background: var(--tj-secondary); border-color: var(--tj-secondary);
+    box-shadow: 0 3px 0 0 #96690a;
+  }
   .d-jack.now .d-j-label, .d-jack.done .d-j-label,
   .d-jack.now .d-j-val, .d-jack.done .d-j-val { color: var(--tj-secondary-ink); }
   /* light sweeping off the reward while it is there to be taken */
@@ -222,7 +274,15 @@
 
   /* Its own line, not a caption stuck to the jackpot bar above it. Needs the
      #daily-modal prefix to outweigh the `.m-sub` margin above. */
-  #daily-modal #daily-msg { margin: 18px 0 6px; min-height: 16px; }
+  /* the status line speaks in the game's label voice — mono caps, letterspaced
+     — rather than lowercase body copy */
+  #daily-modal #daily-msg {
+    margin: 15px 0 4px; min-height: 18px;
+    font-family: var(--tj-font-body); font-weight: 600; font-size: 14px;
+    letter-spacing: 0; text-transform: none; color: var(--tj-on-surface);
+  }
+  #daily-modal #daily-msg.win { color: var(--tj-secondary-light); font-size: 15px; font-weight: 700; }
+  #daily-modal #daily-msg.bad { color: var(--tj-error); }
 
   /* coins thrown out of the panel when a claim lands */
   .d-burst { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
@@ -237,6 +297,38 @@
     0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
     12% { opacity: 1; }
     100% { transform: translate(var(--tx), var(--ty)) scale(1) rotate(var(--r)); opacity: 0; }
+  }
+
+  /* On a desktop window the 330px panel is a postage stamp in the middle of a
+     large screen. Everything steps up together so the proportions hold — this
+     is a scale change, not a different layout. */
+  @media (min-width: 720px) and (min-height: 620px) {
+    #name-modal .box, #account-modal .box, #settings-modal .box, #daily-modal .box {
+      width: 430px; padding: 30px 32px; border-radius: 28px;
+    }
+    #name-modal h3, #account-modal h3, #settings-modal h3, #daily-modal h3 {
+      font-size: 34px; margin-bottom: 14px;
+    }
+    #name-modal .m-close, #account-modal .m-close,
+    #settings-modal .m-close, #daily-modal .m-close {
+      top: 21px; right: 18px; font-size: 38px; width: 42px; height: 42px;
+    }
+    .m-sub { font-size: 16px; margin-bottom: 20px; }
+    .m-label { font-size: 12px; margin-bottom: 14px; }
+    .m-btn { font-size: 22px; padding: 16px; margin-top: 13px; border-radius: 20px; }
+    .m-btn.narrow { font-size: 18px; padding: 13px; }
+    .m-btn.text { font-size: 17px; padding: 11px; }
+    #name-input, #code-input { font-size: 20px; padding: 14px 16px; }
+    #name-save { font-size: 22px; padding: 16px; }
+    #pfp-grid { gap: 13px; }
+    #pfp-grid .pfp-row { gap: 13px; }
+    #pfp-grid .pfp { width: 62px; height: 62px; }
+    .d-chip { max-width: 58px; padding: 9px 0 8px; }
+    .d-chip .d-v { font-size: 18px; }
+    .d-chip .d-n { font-size: 11px; }
+    .d-jack { padding: 13px 16px; }
+    .d-jack .d-j-val { font-size: 21px; }
+    .d-jack .d-j-label { font-size: 12px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -347,11 +439,12 @@
     <button class="m-close" id="settings-close">&times;</button>
     <h3>SETTINGS</h3>
     <button class="m-btn ghost" id="mute-toggle">🔊 SOUND: ON</button>
-    <button class="m-btn ghost" id="boost-side-toggle" style="margin-top: 8px;">🚀 BOOST: RIGHT</button>
+    <button class="m-btn ghost" id="boost-side-toggle">🚀 BOOST: RIGHT</button>
     <p class="m-sub" style="margin-top: 18px;">Have a friend code? Enter it to unlock a bonus skin.</p>
     <input id="code-input" maxlength="16" placeholder="enter code" autocomplete="off" inputmode="numeric">
     <button class="m-btn danger" id="code-redeem">REDEEM</button>
     <p class="m-sub" id="code-msg"></p>
+    <button class="m-btn text" id="settings-done">CLOSE</button>
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>

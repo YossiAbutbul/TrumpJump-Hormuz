@@ -166,11 +166,14 @@ window.accountModal = () => {
     box.appendChild(b);
     return b;
   };
+  const section = (txt) => {
+    const p = document.createElement('p');
+    p.className = 'm-label';
+    p.textContent = txt;
+    box.appendChild(p);
+  };
   const pfpSection = () => {
-    const label = document.createElement('p');
-    label.className = 'm-sub'; label.textContent = 'Profile picture';
-    label.style.margin = '2px 0 8px';
-    box.appendChild(label);
+    section('Profile picture');
     const grid = document.createElement('div');
     grid.id = 'pfp-grid';
     box.appendChild(grid);
@@ -179,23 +182,27 @@ window.accountModal = () => {
 
   if (fb && fb.user) {
     const name = (fb.profile && fb.profile.username) || 'player';
+    // no best score here — the menu already shows it in the header
     title('HI, ' + name.toUpperCase());
-    sub('best: ' + ((fb.profile && fb.profile.best) || 0) + ' m');
     pfpSection();
-    btn('CHANGE NAME', 'ghost', () => {
+    // Changing your name is what people open this panel to do, so it is the
+    // one that gets the reward colour and the full width. Signing out is
+    // destructive and rarely wanted — quieter and narrower, and dismissal is
+    // quieter still (the × in the corner does the same job).
+    btn('CHANGE NAME', 'gold', () => {
       close();
       window.pickUsername(name);
     });
-    btn('SIGN OUT', 'danger', () => { close(); if (fb.signOut) fb.signOut(); });
-    btn('CLOSE', 'ghost', close);
+    btn('SIGN OUT', 'quiet narrow', () => { close(); if (fb.signOut) fb.signOut(); });
+    btn('CLOSE', 'text', close);
   } else {
     title('PLAY');
-    sub('sign in to save your progress across devices and climb the leaderboard');
+    sub('Sign in to save your progress across devices and climb the leaderboard.');
     btn('SIGN IN WITH GOOGLE', 'google', () => {
       close();
       if (fb && fb.signIn) fb.signIn();
     }, '<span class="gi">G</span> SIGN IN WITH GOOGLE');
-    btn('PLAY AS GUEST', 'ghost', close);
+    btn('PLAY AS GUEST', 'text', close);
   }
   modal.style.display = 'flex';
   window.setGameInputEnabled(false);
@@ -227,6 +234,7 @@ window.settingsModal = () => {
   const closeBtn = document.getElementById('settings-close');
   const muteBtn = document.getElementById('mute-toggle');
   const boostBtn = document.getElementById('boost-side-toggle');
+  const doneBtn = document.getElementById('settings-done');
   if (!modal || !input) return;
   input.value = '';
   msg.textContent = '';
@@ -264,6 +272,7 @@ window.settingsModal = () => {
   const cleanup = () => {
     redeem.removeEventListener('click', onRedeem);
     closeBtn.removeEventListener('click', doClose);
+    if (doneBtn) doneBtn.removeEventListener('click', doClose);
     input.removeEventListener('keydown', onKey);
     modal.removeEventListener('click', onBackdrop);
     muteBtn.removeEventListener('click', onMute);
@@ -280,6 +289,7 @@ window.settingsModal = () => {
   const onBackdrop = (e) => { if (e.target === modal) doClose(); };
   redeem.addEventListener('click', onRedeem);
   closeBtn.addEventListener('click', doClose);
+  if (doneBtn) doneBtn.addEventListener('click', doClose);
   input.addEventListener('keydown', onKey);
   modal.addEventListener('click', onBackdrop);
   muteBtn.addEventListener('click', onMute);
