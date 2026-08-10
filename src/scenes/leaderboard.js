@@ -14,20 +14,20 @@ class LeaderboardScene extends Phaser.Scene {
     const save = window.SAVE.data;
     buildFaceTextures(this); // circular avatars for each player's profile picture
 
-    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS);
+    drawBackdrop(this, save.map, { clouds: 3 });
     this.add.rectangle(W / 2, H / 2, W, H, 0x090b18, 0.66);
 
     this.add.text(W / 2, 40, 'LEADERBOARD', {
-      fontFamily: FONT, fontSize: '34px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '34px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 7,
     }).setOrigin(0.5);
 
     this.status = this.add.text(W / 2, 320, 'loading...', {
-      fontFamily: FONT, fontSize: '20px', color: '#ffe9c9', align: 'center',
+      fontFamily: FONT, fontSize: '20px', color: '#d5e3ff', align: 'center',
     }).setOrigin(0.5);
 
     uiButton(this, W / 2, H - 44, 200, 50, 'BACK',
-      () => this.scene.start('Menu'), { color: 0x2b3a5e, size: 21 });
+      () => this.scene.start('Menu'), { color: 0x1d3557, size: 21 });
 
     this.loadBoard();
   }
@@ -35,10 +35,10 @@ class LeaderboardScene extends Phaser.Scene {
   // ---- helpers ----------------------------------------------------------
 
   colorForRank(i) {
-    return [0xf5c542, 0xcfd6e0, 0xcd7f32][i] || 0x2f9c8f; // gold, silver, bronze
+    return [0xfbb400, 0xcfd6e0, 0xcd7f32][i] || 0x2f9c8f; // gold, silver, bronze
   }
   hexForRank(i) {
-    return ['#f5c542', '#cfd6e0', '#cd7f32'][i] || '#8fd6c8';
+    return ['#ffd795', '#cfd6e0', '#cd7f32'][i] || '#8fd6c8';
   }
 
   crown(cont, x, y, w, color) {
@@ -147,7 +147,7 @@ class LeaderboardScene extends Phaser.Scene {
 
       if (s.i === 0) {
         const glow = this.add.image(s.x, s.y, 'sun').setScale(window.TEX_SCALE * 1.7)
-          .setTint(0xf5c542).setAlpha(0.6);
+          .setTint(0xfbb400).setAlpha(0.6);
         cont.add(glow);
         this.tweens.add({ targets: glow, alpha: 0.3, scale: window.TEX_SCALE * 1.9,
           duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
@@ -161,7 +161,7 @@ class LeaderboardScene extends Phaser.Scene {
       let ny = s.y + s.r + 14;
       if (s.i === 0) {
         cont.add(this.add.text(s.x, ny, 'KING OF HORMUZ', {
-          fontFamily: FONT, fontSize: '16px', color: '#f5c542',
+          fontFamily: FONT, fontSize: '16px', color: '#ffd795',
           stroke: '#71301f', strokeThickness: 4,
         }).setOrigin(0.5));
         ny += 24;
@@ -182,7 +182,7 @@ class LeaderboardScene extends Phaser.Scene {
     const rowH = 58, gap = 8;
 
     // divider
-    this.boardBits.push(this.add.rectangle(W / 2, top - 12, W - 48, 2, 0xf5c542, 0.35));
+    this.boardBits.push(this.add.rectangle(W / 2, top - 12, W - 48, 2, 0xfbb400, 0.35));
 
     if (!rest.length) return;
 
@@ -196,21 +196,21 @@ class LeaderboardScene extends Phaser.Scene {
       const g = this.add.graphics();
       g.fillStyle(mine ? 0x243a63 : 0x16223f, 0.92);
       g.fillRoundedRect(24, y - rowH / 2, W - 48, rowH, 16);
-      if (mine) { g.lineStyle(3, 0xf5c542, 0.9); g.strokeRoundedRect(24, y - rowH / 2, W - 48, rowH, 16); }
+      if (mine) { g.lineStyle(3, 0xfbb400, 0.9); g.strokeRoundedRect(24, y - rowH / 2, W - 48, rowH, 16); }
       box.add(g);
 
       box.add(this.add.text(52, y, `${rank}`, {
         fontFamily: FONT, fontSize: '20px', color: '#8fa0c0',
       }).setOrigin(0.5));
 
-      this.avatar(box, 100, y, 20, p, mine ? 0xf5c542 : 0x3a4a6a, 3);
+      this.avatar(box, 100, y, 20, p, mine ? 0xfbb400 : 0x1d3557, 3);
 
       box.add(this.add.text(134, y, p.username + (mine ? ' (you)' : ''), {
         fontFamily: FONT, fontSize: '18px', color: mine ? '#ffe95e' : '#eaf0ff',
       }).setOrigin(0, 0.5));
 
       box.add(this.add.text(W - 44, y, `${p.best} m`, {
-        fontFamily: FONT, fontSize: '18px', color: '#f5c542',
+        fontFamily: FONT, fontSize: '18px', color: '#ffd795',
       }).setOrigin(1, 0.5));
     });
 

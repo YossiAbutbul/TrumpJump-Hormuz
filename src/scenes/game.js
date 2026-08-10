@@ -61,9 +61,15 @@ class GameScene extends Phaser.Scene {
     this.magDur = 6000 + 1500 * save.up.magnet;
 
     // --- background ---
-    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS).setScrollFactor(0).setDepth(-10);
-    this.sun = this.add.image(W / 2, H - 340, map.sun === 'moon' ? 'moon' : 'sun')
-      .setScale(1.6 * TS).setScrollFactor(0).setDepth(-9);
+    // Same backdrop the menu and shop use: sunset wash, mountains sitting on
+    // the waterline, water across the bottom third — so starting a run does not
+    // jump to a different-looking strait. No sun, for the same reason it went
+    // from the menu; moon maps keep theirs, high and out of the play area.
+    const { seaH, seaTop } = seaBand(H);
+    this.add.image(W / 2, H / 2, 'sky-' + save.map).setDisplaySize(W, H).setScrollFactor(0).setDepth(-10);
+    if (map.sun === 'moon') {
+      this.add.image(W / 2, 300, 'moon').setScale(1.2 * TS).setScrollFactor(0).setDepth(-9);
+    }
     this.clouds = [];
     for (let i = 0; i < 5; i++) {
       const c = this.add.image(
@@ -75,8 +81,25 @@ class GameScene extends Phaser.Scene {
       c.baseY = c.y;
       this.clouds.push(c);
     }
-    this.add.image(W / 2, this.baseY - 60, 'coast').setScale(TS).setDepth(-7);
-    this.sea = this.add.image(W / 2, H - 60, 'sea-' + save.map).setScale(TS).setDepth(5);
+    this.add.image(W / 2, seaTop - 100, 'coast-' + save.map).setScale(TS).setDepth(-7);
+    this.add.image(W / 2, seaTop + seaH / 2, 'sea-' + save.map)
+      .setDisplaySize(W, seaH).setDepth(-6);
+    // The bottom band of that water, drawn again IN FRONT of the player so a
+    // fall reads as sinking rather than blinking out. It has to be a separate
+    // object: the water body now reaches a third of the way up the screen, and
+    // at depth 5 it would paint over the starting platform and the player.
+    //
+    // It is the SAME image, same size and position, cropped to its bottom
+    // band — not a flat fill of the gradient's end colour. A flat fill leaves a
+    // visible seam, because the gradient only reaches that colour at the very
+    // bottom and is still lighter where the strip begins. Cropping means the
+    // overlap is literally the same pixels, so there is no edge at all.
+    const SINK = 68;
+    this.sea = this.add.image(W / 2, seaTop + seaH / 2, 'sea-' + save.map)
+      .setDisplaySize(W, seaH).setDepth(5);
+    const f = this.sea.frame;
+    const cropH = Math.round(f.height * (SINK / seaH));
+    this.sea.setCrop(0, f.height - cropH, f.width, cropH);
 
     // --- groups ---
     this.platforms = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -124,7 +147,11 @@ class GameScene extends Phaser.Scene {
     // the first platform into the water bounces you instead of killing you. It
     // is a normal platform, so it scrolls down and gets culled once you climb
     // clear of the start (after which a fall is lethal again).
-    const water = this.platforms.create(W / 2, this.sea.y - 34, 'spark');
+    // Anchored to the start platform, not to the water sprite. It used to be
+    // placed off `this.sea`, which made an invisible bit of collision geometry
+    // move whenever the background art moved; this keeps it exactly 56 below
+    // the first tanker regardless of how the sea is drawn.
+    const water = this.platforms.create(W / 2, this.baseY + 56, 'spark');
     water.type = 'water';
     water.setVisible(false).setScale(1);
     water.body.setSize(W * 3, 20);
@@ -251,10 +278,10 @@ class GameScene extends Phaser.Scene {
   buildHud() {
     const W = this.W;
     const hud = this.add.graphics().setScrollFactor(0).setDepth(19);
-    hud.fillStyle(0x11142a, 0.6);
+    hud.fillStyle(0x032041, 0.6);
     hud.fillRoundedRect(10, 10, 140, 44, 12);
     hud.fillRoundedRect(10, 60, 112, 36, 12);
-    hud.lineStyle(2, 0xf5c542, 0.4);
+    hud.lineStyle(2, 0xfbb400, 0.4);
     hud.strokeRoundedRect(10, 10, 140, 44, 12);
     hud.strokeRoundedRect(10, 60, 112, 36, 12);
 
@@ -264,7 +291,7 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(20);
     this.add.image(30, 78, 'coin').setScale(0.85 * window.TEX_SCALE).setScrollFactor(0).setDepth(20);
     this.coinText = this.add.text(46, 78, '0', {
-      fontFamily: FONT, fontSize: '18px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '18px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 4,
     }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(20);
     this.powerText = this.add.text(W - 14, 60, '', {
@@ -274,9 +301,9 @@ class GameScene extends Phaser.Scene {
 
     // mute + pause buttons
     const mkCircle = (x, label, cb) => {
-      const c = this.add.circle(x, 32, 19, 0x11142a, 0.65)
+      const c = this.add.circle(x, 32, 19, 0x032041, 0.65)
         .setScrollFactor(0).setDepth(20)
-        .setStrokeStyle(2, 0xf5c542, 0.5)
+        .setStrokeStyle(2, 0xfbb400, 0.5)
         .setInteractive({ useHandCursor: true });
       const t = this.add.text(x, 32, label, { fontSize: '17px' })
         .setOrigin(0.5).setScrollFactor(0).setDepth(21);
@@ -298,17 +325,17 @@ class GameScene extends Phaser.Scene {
     const dim = this.add.rectangle(this.W / 2, this.H / 2, this.W, this.H, 0x090b18, 0.72)
       .setScrollFactor(0).setDepth(40).setInteractive(); // swallow stray taps
     const title = this.add.text(this.W / 2, this.H / 2 - 96, 'PAUSED', {
-      fontFamily: FONT, fontSize: '48px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '48px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 8,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
     const contBtn = uiButton(this, this.W / 2, this.H / 2 - 12, 250, 58, 'CONTINUE',
       () => this.continueCountdown(), { color: 0x2e7d32, size: 24 })
       .setScrollFactor(0).setDepth(41);
     const exitBtn = uiButton(this, this.W / 2, this.H / 2 + 66, 250, 58, 'EXIT GAME',
-      () => this.exitGame(), { color: 0xc9312b, size: 24 })
+      () => this.exitGame(), { color: 0xff535b, size: 24 })
       .setScrollFactor(0).setDepth(41);
     const hint = this.add.text(this.W / 2, this.H / 2 + 118, 'exit ends the run', {
-      fontFamily: 'Arial', fontSize: '13px', color: '#ffd9a8',
+      fontFamily: window.FONT_BODY, fontSize: '13px', color: '#d5e3ff',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
     this.pauseUI = [dim, title, contBtn, exitBtn, hint];
     this.setPauseUI(false);
@@ -334,7 +361,7 @@ class GameScene extends Phaser.Scene {
     this.counting = true;
     this.setPauseUI(false);
     const label = this.add.text(this.W / 2, this.H / 2, '3', {
-      fontFamily: FONT, fontSize: '120px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '120px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 12,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41);
     let n = 3;
@@ -868,7 +895,7 @@ class GameScene extends Phaser.Scene {
 
   banner(msg) {
     const t = this.add.text(this.W / 2, 250, msg, {
-      fontFamily: FONT, fontSize: '40px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '40px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 8,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(26).setScale(0);
     this.tweens.add({
@@ -930,7 +957,7 @@ class GameScene extends Phaser.Scene {
       `bank total: ${save.bank}`,
     ];
     this.add.text(W / 2, H / 2 - 130, lines.join('\n'), {
-      fontFamily: FONT, fontSize: '19px', color: '#ffe9c9',
+      fontFamily: FONT, fontSize: '19px', color: '#d5e3ff',
       stroke: '#71301f', strokeThickness: 4, align: 'center', lineSpacing: 12,
     }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(31);
 
@@ -938,14 +965,14 @@ class GameScene extends Phaser.Scene {
     if (this.billCount > 0) {
       this.add.text(W / 2, H / 2 + 20,
         `TRUMP BUCKS  +${this.billCount}`, {
-          fontFamily: FONT, fontSize: '18px', color: '#8ff0a8',
+          fontFamily: FONT, fontSize: '18px', color: '#9ecfd1',
           stroke: '#1e5233', strokeThickness: 4,
         }).setOrigin(0.5).setScrollFactor(0).setDepth(31);
     }
 
     this.add.text(W / 2, H / 2 + 42 + extra,
       isBest ? 'NEW BEST! THE BEST EVER!' : `best: ${save.best} m`, {
-        fontFamily: FONT, fontSize: '20px', color: '#f5c542',
+        fontFamily: FONT, fontSize: '20px', color: '#ffd795',
         stroke: '#71301f', strokeThickness: 5,
       }).setOrigin(0.5).setScrollFactor(0).setDepth(31);
 
@@ -954,10 +981,10 @@ class GameScene extends Phaser.Scene {
         () => this.scene.restart(), { size: 24 })
         .setScrollFactor(0).setDepth(31);
       uiButton(this, W / 2 - 70, H / 2 + 170 + extra, 120, 46, 'SHOP',
-        () => this.scene.start('Shop'), { color: 0xb8860b, size: 18 })
+        () => this.scene.start('Shop'), { color: 0xfbb400, size: 18 })
         .setScrollFactor(0).setDepth(31);
       uiButton(this, W / 2 + 70, H / 2 + 170 + extra, 120, 46, 'MENU',
-        () => this.scene.start('Menu'), { color: 0x2b3a5e, size: 18 })
+        () => this.scene.start('Menu'), { color: 0x1d3557, size: 18 })
         .setScrollFactor(0).setDepth(31);
       this.input.keyboard.once('keydown-SPACE', () => this.scene.restart());
     });

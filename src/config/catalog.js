@@ -27,8 +27,11 @@ window.CATALOG = {
   MAPS: {
     sunset: {
       name: 'SUNSET GULF', price: 0,
-      sky: ['#26224e', '#7a4a7a', '#e88a5d', '#f6c667'],
-      sea: ['#2a6f9e', '#0c3352'],
+      // Stops taken from the Stitch design. They sit closer together in
+      // luminance than the old set, which is what makes the sky read as one
+      // smooth wash instead of four visible bands.
+      sky: ['#3b2a5c', '#7c416c', '#c4766b', '#edb97a'],
+      sea: ['#184c7a', '#113659'],
       sun: 'sun', stars: false, cloudTint: 0xffffff,
     },
     night: {

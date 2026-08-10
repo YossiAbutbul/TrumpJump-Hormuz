@@ -21,14 +21,14 @@
 <meta name="twitter:image" content="https://trump-jump-hormuz.vercel.app/assets/brand/og.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@800;900&family=Be+Vietnam+Pro:wght@500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
   html, body {
     margin: 0;
     padding: 0;
     height: 100dvh;
     overflow: hidden;
-    background: radial-gradient(1200px 800px at 50% 20%, #16203f 0%, #0a0e22 55%, #05070f 100%);
+    background: radial-gradient(1200px 800px at 50% 20%, #112a4c 0%, #00132d 55%, #000e24 100%);
     font-family: Arial, sans-serif;
   }
   #game {
@@ -40,150 +40,221 @@
   }
   #game canvas {
     border-radius: 10px;
-    box-shadow: 0 0 80px rgba(246, 198, 103, 0.18), 0 10px 40px rgba(0, 0, 0, 0.6);
+    box-shadow: 0 0 80px rgba(251, 180, 0, 0.16), 0 10px 40px rgba(0, 0, 0, 0.6);
     touch-action: none;
   }
-  #name-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 7, 15, 0.7);
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-  }
-  #name-modal .box {
-    position: relative;
-    background: #16203f;
-    border: 2px solid #f5c542;
-    border-radius: 14px;
-    padding: 22px 24px;
-    width: 280px;
-    max-width: 80vw;
-    text-align: center;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
-    font-family: "Luckiest Guy", Arial, sans-serif;
-  }
-  #name-modal .m-close {
-    position: absolute; top: 6px; right: 12px; background: none; border: none;
-    color: #ffd9a8; font-size: 26px; line-height: 1; cursor: pointer;
-    font-family: Arial, sans-serif; padding: 2px 4px;
-  }
-  #name-modal .m-close:hover { color: #fff; }
-  #name-modal h3 { color: #f5c542; margin: 0 0 14px; letter-spacing: 1px; }
-  #name-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 2px solid #f5c542;
-    background: #0a0e22;
-    color: #fff;
-    font-size: 18px;
-    outline: none;
-  }
-  #name-save {
-    margin-top: 14px;
-    width: 100%;
-    padding: 11px;
-    border: none;
-    border-radius: 10px;
-    background: #c9312b;
-    color: #fff;
-    font-size: 18px;
-    font-family: "Luckiest Guy", Arial, sans-serif;
-    cursor: pointer;
-  }
-  #account-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(5, 7, 15, 0.7);
-    align-items: center;
-    justify-content: center;
-    z-index: 50;
-  }
-  #account-modal .box {
-    position: relative;
-    background: #16203f;
-    border: 2px solid #f5c542;
-    border-radius: 14px;
-    padding: 22px 24px;
-    width: 300px;
-    max-width: 82vw;
-    text-align: center;
-    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
-    font-family: "Luckiest Guy", Arial, sans-serif;
-  }
-  #account-modal .m-close {
-    position: absolute;
-    top: 6px;
-    right: 12px;
-    background: none;
-    border: none;
-    color: #ffd9a8;
-    font-size: 26px;
-    line-height: 1;
-    cursor: pointer;
-    font-family: Arial, sans-serif;
-    padding: 2px 4px;
-  }
-  #account-modal .m-close:hover { color: #fff; }
-  #account-modal h3 { color: #f5c542; margin: 0 0 8px; letter-spacing: 1px; }
-  #account-modal .m-sub {
-    color: #ffd9a8; font-family: Arial, sans-serif; font-size: 13px; margin: 0 0 16px;
-  }
-  .m-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; box-sizing: border-box; margin: 8px 0 0; padding: 11px;
-    border: none; border-radius: 10px; font-size: 16px;
-    font-family: "Luckiest Guy", Arial, sans-serif; cursor: pointer; color: #fff;
-  }
-  .m-btn.google { background: #4285f4; }
-  .m-btn.danger { background: #c9312b; }
-  .m-btn.ghost { background: transparent; border: 2px solid #3a4a6a; color: #ffd9a8; }
-  .m-btn .gi {
-    width: 18px; height: 18px; background: #fff; border-radius: 3px;
-    display: inline-flex; align-items: center; justify-content: center;
-    color: #4285f4; font-weight: bold; font-family: Arial, sans-serif; font-size: 13px;
-  }
-  #settings-modal {
+  /* ---- DOM modals ---------------------------------------------------------
+     These wear the same Kinetic Arcade system as the canvas: chunky shapes, a
+     thick outline on everything, depth from a hard offset edge instead of a
+     blur, and the three faces (Anybody / Be Vietnam Pro / JetBrains Mono).
+     Every colour below comes from src/config/theme.js via its --tj-* vars, so
+     changing a token moves the canvas and the modals together.
+
+     Overlays get a thick SECONDARY border rather than the navy outline used
+     elsewhere — that is what lifts them off the game world behind. */
+  .m-overlay, #name-modal, #account-modal, #settings-modal, #daily-modal {
     display: none; position: fixed; inset: 0;
-    background: rgba(5, 7, 15, 0.7);
+    background: rgba(0, 8, 22, 0.72);
     align-items: center; justify-content: center; z-index: 50;
   }
-  #settings-modal .box {
-    position: relative; background: #16203f; border: 2px solid #f5c542;
-    border-radius: 14px; padding: 22px 24px; width: 300px; max-width: 82vw;
-    text-align: center; box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
-    font-family: "Luckiest Guy", Arial, sans-serif;
+  #name-modal .box, #account-modal .box, #settings-modal .box, #daily-modal .box {
+    position: relative; box-sizing: border-box;
+    background: var(--tj-surface-container);
+    border: 4px solid var(--tj-secondary);
+    border-radius: var(--tj-radius-lg);
+    padding: 24px; width: 330px; max-width: 88vw; text-align: center;
+    box-shadow: 0 8px 0 0 var(--tj-outline), 0 22px 44px rgba(0, 8, 22, 0.6);
+    font-family: var(--tj-font);
+    animation: modalIn 0.22s cubic-bezier(0.2, 1.4, 0.4, 1) both;
   }
-  #settings-modal .m-close {
-    position: absolute; top: 6px; right: 12px; background: none; border: none;
-    color: #ffd9a8; font-size: 26px; line-height: 1; cursor: pointer;
-    font-family: Arial, sans-serif; padding: 2px 4px;
+  @keyframes modalIn {
+    from { transform: translateY(14px) scale(0.94); opacity: 0; }
+    to { transform: none; opacity: 1; }
   }
-  #settings-modal .m-close:hover { color: #fff; }
-  #settings-modal h3 { color: #f5c542; margin: 0 0 8px; letter-spacing: 1px; }
-  #settings-modal .m-sub {
-    color: #ffd9a8; font-family: Arial, sans-serif; font-size: 13px; margin: 0 0 14px;
+  #name-modal .m-close, #account-modal .m-close,
+  #settings-modal .m-close, #daily-modal .m-close {
+    position: absolute; top: 8px; right: 10px; width: 30px; height: 30px;
+    background: var(--tj-surface-highest); border: 3px solid var(--tj-outline);
+    border-radius: 999px; color: var(--tj-on-surface); font-size: 17px;
+    line-height: 1; cursor: pointer; font-family: var(--tj-font-body); padding: 0;
   }
-  #code-input {
-    width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 10px;
-    border: 2px solid #f5c542; background: #0a0e22; color: #fff; font-size: 18px;
-    outline: none; text-align: center; letter-spacing: 3px;
+  #name-modal .m-close:hover, #account-modal .m-close:hover,
+  #settings-modal .m-close:hover, #daily-modal .m-close:hover {
+    background: var(--tj-primary); color: #fff;
   }
-  #code-msg { min-height: 18px; margin: 12px 0 0; font-size: 14px; font-family: Arial, sans-serif; }
+  #name-modal h3, #account-modal h3, #settings-modal h3, #daily-modal h3 {
+    font-family: var(--tj-font); font-weight: 900; font-size: 26px;
+    text-transform: uppercase; letter-spacing: 0.02em; margin: 0 0 10px;
+    color: var(--tj-secondary-light);
+    text-shadow: 0 4px 0 var(--tj-outline);
+  }
+  .m-sub {
+    color: var(--tj-on-surface); font-family: var(--tj-font-body); font-weight: 500;
+    font-size: 14px; margin: 0 0 16px; line-height: 1.45;
+  }
+  .m-sub.win { color: var(--tj-secondary-light); font-weight: 700; }
+  .m-sub.bad { color: var(--tj-error); font-weight: 700; }
+
+  /* the arcade button: face on a hard edge, pressed down onto it */
+  .m-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; box-sizing: border-box; margin: 10px 0 0; padding: 13px;
+    border: 4px solid var(--tj-outline); border-radius: var(--tj-radius);
+    font-family: var(--tj-font); font-weight: 900; font-size: 18px;
+    text-transform: uppercase; letter-spacing: 0.02em;
+    cursor: pointer; color: #fff; background: var(--tj-primary);
+    box-shadow: 0 4px 0 0 var(--tj-outline);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .m-btn:active { transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-outline); }
+  .m-btn:focus-visible { outline: 3px solid var(--tj-secondary); outline-offset: 3px; }
+  .m-btn.google { background: #4285f4; }
+  .m-btn.danger { background: var(--tj-primary); }
+  .m-btn.gold { background: var(--tj-secondary); color: var(--tj-secondary-ink); }
+  .m-btn.ghost { background: var(--tj-surface-highest); color: var(--tj-on-surface); }
+  .m-btn[disabled] { opacity: 0.5; cursor: default; }
+  .m-btn[disabled]:active { transform: none; box-shadow: 0 4px 0 0 var(--tj-outline); }
+  .m-btn .gi {
+    width: 20px; height: 20px; background: #fff; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #4285f4; font-weight: 700; font-family: var(--tj-font-body); font-size: 13px;
+  }
+
+  /* inputs are sunken — the opposite of a button */
+  #name-input, #code-input {
+    width: 100%; box-sizing: border-box; padding: 12px 14px;
+    border-radius: var(--tj-radius); border: 3px solid var(--tj-outline);
+    background: var(--tj-surface-lowest); color: #fff;
+    font-family: var(--tj-font-body); font-weight: 600; font-size: 17px;
+    outline: none; box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.45);
+  }
+  #code-input { text-align: center; letter-spacing: 3px; }
+  #name-input:focus, #code-input:focus { border-color: var(--tj-secondary); }
+  #name-save {
+    margin-top: 14px; width: 100%; padding: 13px;
+    border: 4px solid var(--tj-outline); border-radius: var(--tj-radius);
+    background: var(--tj-primary); color: #fff;
+    font-family: var(--tj-font); font-weight: 900; font-size: 18px;
+    text-transform: uppercase; cursor: pointer;
+    box-shadow: 0 4px 0 0 var(--tj-outline);
+  }
+  #name-save:active { transform: translateY(4px); box-shadow: 0 0 0 0 var(--tj-outline); }
+  #code-msg {
+    min-height: 18px; margin: 12px 0 0; font-size: 13px;
+    font-family: var(--tj-font-body); font-weight: 600;
+  }
+
+  /* ---- daily bonus --------------------------------------------------------
+     The week is six chips on a rail plus the day-7 payout bar. A banked day is
+     filled with the reward colour; today wears a pulsing ring. */
+  .d-track { position: relative; padding: 2px 0; }
+  /* insets are half a chip (a twelfth of a six-across row), so the rail runs
+     chip-centre to chip-centre however wide the chips end up */
+  .d-rail {
+    position: absolute; left: 8.33%; right: 8.33%; top: 50%; height: 5px;
+    margin-top: -2.5px; border-radius: 3px; background: var(--tj-surface-lowest);
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.6);
+  }
+  .d-rail span {
+    display: block; height: 100%; border-radius: 3px; background: var(--tj-secondary);
+    transition: width 0.5s cubic-bezier(0.3, 1, 0.4, 1);
+  }
+  .d-chips { position: relative; display: flex; gap: 6px; justify-content: center; }
+  .d-chip {
+    /* share the row rather than overflow it — six across on any phone width */
+    position: relative; box-sizing: border-box; flex: 1 1 0; min-width: 0;
+    max-width: 46px; padding: 7px 0 6px;
+    border-radius: var(--tj-radius-chip); border: 3px solid var(--tj-outline);
+    background: var(--tj-surface-high);
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+  }
+  .d-chip .d-n {
+    font-family: var(--tj-font-label); font-weight: 700; font-size: 9px;
+    color: var(--tj-tertiary);
+  }
+  .d-chip .d-v {
+    font-family: var(--tj-font); font-weight: 900; font-size: 14px;
+    color: var(--tj-on-surface); line-height: 1.1;
+  }
+  .d-chip .d-b { font-family: var(--tj-font-label); font-weight: 700; font-size: 8px; color: #8ff0a8; }
+  /* banked days take the reward colour, with the dark ink that belongs on it */
+  .d-chip.done { background: var(--tj-secondary); border-color: var(--tj-outline); }
+  .d-chip.done .d-v, .d-chip.done .d-n { color: var(--tj-secondary-ink); }
+  .d-chip.done .d-n { font-size: 12px; }
+  .d-chip.done .d-b { color: #2e5d0f; }
+  .d-chip.now { border-color: var(--tj-secondary); animation: dChip 1.8s ease-in-out infinite; }
+  @keyframes dChip {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(251, 180, 0, 0.4); }
+    50% { box-shadow: 0 0 0 4px rgba(251, 180, 0, 0.75); }
+  }
+  .d-chip.won { animation: dStamp 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+  @keyframes dStamp {
+    0% { transform: scale(1.8) rotate(-10deg); opacity: 0.2; }
+    60% { transform: scale(0.96); opacity: 1; }
+    100% { transform: none; }
+  }
+
+  /* day 7 — the big one, given the whole width */
+  .d-jack {
+    position: relative; overflow: hidden; margin: 14px 0 0; padding: 10px 14px;
+    border-radius: var(--tj-radius); border: 3px solid var(--tj-outline);
+    background: var(--tj-surface-high);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .d-jack .d-j-label {
+    font-family: var(--tj-font-label); font-weight: 700; font-size: 10px;
+    color: var(--tj-tertiary); text-align: left; text-transform: uppercase;
+  }
+  .d-jack .d-j-val {
+    font-family: var(--tj-font); font-weight: 900; font-size: 17px;
+    color: var(--tj-secondary-light); white-space: nowrap;
+  }
+  .d-jack.now, .d-jack.done { background: var(--tj-secondary); }
+  .d-jack.now .d-j-label, .d-jack.done .d-j-label,
+  .d-jack.now .d-j-val, .d-jack.done .d-j-val { color: var(--tj-secondary-ink); }
+  /* light sweeping off the reward while it is there to be taken */
+  .d-jack.now::after {
+    content: ''; position: absolute; top: -60%; left: -60%; width: 40%; height: 220%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    transform: rotate(18deg); animation: dSweep 2.8s ease-in-out infinite;
+  }
+  @keyframes dSweep { 0% { left: -60%; } 55%, 100% { left: 130%; } }
+
+  /* Its own line, not a caption stuck to the jackpot bar above it. Needs the
+     #daily-modal prefix to outweigh the `.m-sub` margin above. */
+  #daily-modal #daily-msg { margin: 18px 0 6px; min-height: 16px; }
+
+  /* coins thrown out of the panel when a claim lands */
+  .d-burst { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .d-burst i {
+    position: absolute; left: 50%; top: 62%; width: 14px; height: 14px;
+    border-radius: 50%; margin: -7px 0 0 -7px;
+    background: radial-gradient(circle at 34% 28%, #ffe9a8, var(--tj-secondary) 48%, #a06d00);
+    border: 2px solid var(--tj-outline);
+    animation: dCoin 0.95s cubic-bezier(0.15, 0.75, 0.3, 1) forwards;
+  }
+  @keyframes dCoin {
+    0% { transform: translate(0, 0) scale(0.3); opacity: 0; }
+    12% { opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(1) rotate(var(--r)); opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #name-modal .box, #account-modal .box, #settings-modal .box, #daily-modal .box,
+    .d-chip.now, .d-jack.now::after, .d-chip.won, .d-burst i { animation: none; }
+  }
+
+  /* profile-picture picker */
   #pfp-grid { display: flex; flex-direction: column; gap: 10px; align-items: center; }
   #pfp-grid .pfp-row { display: flex; gap: 10px; justify-content: center; }
   #pfp-grid .pfp {
-    width: 46px; height: 46px; border-radius: 50%; overflow: hidden; padding: 0;
-    border: 2px solid #3a4a6a; background: #0a0e22; cursor: pointer; flex: 0 0 auto;
+    width: 48px; height: 48px; border-radius: 50%; overflow: hidden; padding: 0;
+    border: 3px solid var(--tj-outline); background: var(--tj-surface-lowest);
+    cursor: pointer; flex: 0 0 auto;
   }
-  #pfp-grid .pfp img {
-    width: 118%; height: auto; display: block; margin: -2% 0 0 -9%;
-  }
-  #pfp-grid .pfp.sel { border-color: #f5c542; box-shadow: 0 0 0 2px rgba(245, 197, 66, 0.45); }
+  #pfp-grid .pfp img { width: 118%; height: auto; display: block; margin: -2% 0 0 -9%; }
+  #pfp-grid .pfp.sel { border-color: var(--tj-secondary); box-shadow: 0 0 0 3px rgba(251, 180, 0, 0.4); }
+
   /* boot splash — shown instantly (pure CSS, no assets to wait on except the
      small icon), removed by the Menu scene once the game is ready to render */
   #splash {
@@ -195,7 +266,7 @@
     align-items: center;
     justify-content: center;
     gap: 14px;
-    background: radial-gradient(1200px 800px at 50% 20%, #16203f 0%, #0a0e22 55%, #05070f 100%);
+    background: radial-gradient(1200px 800px at 50% 20%, #112a4c 0%, #00132d 55%, #000e24 100%);
     opacity: 1;
     transition: opacity 0.35s ease;
   }
@@ -208,14 +279,14 @@
     animation: splash-pulse 1.6s ease-in-out infinite;
   }
   #splash .s-title {
-    font-family: "Luckiest Guy", "Arial Black", Arial, sans-serif;
+    font-family: "Anybody", "Arial Black", Arial, sans-serif; font-weight: 900;
     font-size: 34px;
-    color: #f5c542;
+    color: #fbb400;
     letter-spacing: 2px;
-    text-shadow: 0 3px 0 #71301f;
+    text-shadow: 0 4px 0 #1d3557;
   }
   #splash .s-sub {
-    font-family: "Luckiest Guy", "Arial Black", Arial, sans-serif;
+    font-family: "Anybody", "Arial Black", Arial, sans-serif; font-weight: 900;
     font-size: 15px;
     color: #ffe9c9;
     letter-spacing: 3px;
@@ -226,8 +297,8 @@
     height: 30px;
     margin-top: 10px;
     border-radius: 50%;
-    border: 4px solid rgba(245, 197, 66, 0.25);
-    border-top-color: #f5c542;
+    border: 4px solid rgba(251, 180, 0, 0.28);
+    border-top-color: #fbb400;
     animation: splash-spin 0.9s linear infinite;
   }
   @keyframes splash-spin { to { transform: rotate(360deg); } }
@@ -281,6 +352,7 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="src/config/theme.js"></script>
 <script src="src/config/firebase-config.js"></script>
 <script src="src/config/catalog.js"></script>
 <script src="src/systems/save.js"></script>

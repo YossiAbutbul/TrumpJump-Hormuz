@@ -12,11 +12,11 @@ class ShopScene extends Phaser.Scene {
     this.W = W; this.H = H;
     const save = window.SAVE.data;
 
-    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS);
+    drawBackdrop(this, save.map, { clouds: 3 });
     this.add.rectangle(W / 2, H / 2, W, H, 0x090b18, 0.55);
 
     this.add.text(W / 2, 46, 'SHOP', {
-      fontFamily: FONT, fontSize: '42px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '42px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 8,
     }).setOrigin(0.5);
 
@@ -24,14 +24,14 @@ class ShopScene extends Phaser.Scene {
     uiPanel(this, W - 152, 20, 132, 44);
     this.add.image(W - 130, 42, 'coin').setScale(TS);
     this.bankText = this.add.text(W - 112, 42, `${save.bank}`, {
-      fontFamily: FONT, fontSize: '22px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '22px', color: '#ffd795',
     }).setOrigin(0, 0.5);
     // Trump Bucks pill (left) — mirrors the bank pill: icon 22px in, value 40px
     // in, with the bill sized to the coin's width so the padding matches
     uiPanel(this, 20, 20, 132, 44);
     this.add.image(42, 42, 'bill').setScale(0.66 * TS);
     this.billsText = this.add.text(60, 42, `${save.bills || 0}`, {
-      fontFamily: FONT, fontSize: '22px', color: '#8ff0a8',
+      fontFamily: FONT, fontSize: '22px', color: '#9ecfd1',
     }).setOrigin(0, 0.5);
 
     // tabs
@@ -41,12 +41,12 @@ class ShopScene extends Phaser.Scene {
       this.tabButtons[name] = uiButton(
         this, W / 2 + (i - 1.5) * 114, 110, 106, 42, name,
         () => { this.tab = name; this.refresh(); },
-        { color: 0x2b3a5e, size: 15 }
+        { color: 0x1d3557, size: 15 }
       );
     });
 
     uiButton(this, W / 2, H - 56, 200, 52, 'BACK', () => this.scene.start('Menu'),
-      { color: 0x2b3a5e, size: 22 })
+      { color: 0x1d3557, size: 22 })
       .setDepth(30); // always above the (possibly scrolling) item list
 
     // scrollable list area: below the tabs, above the BACK button
@@ -97,17 +97,17 @@ class ShopScene extends Phaser.Scene {
     const px = 35, py = H / 2 - ph / 2;
     c.add(uiPanel(this, px, py, pw, ph, { alpha: 0.96 }));
     c.add(this.add.text(W / 2, py + 44, 'ARE YOU SURE?', {
-      fontFamily: FONT, fontSize: '26px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '26px', color: '#ffd795',
       stroke: '#71301f', strokeThickness: 5,
     }).setOrigin(0.5));
     c.add(this.add.text(W / 2, py + 88, `buy ${name} for ${price} ${currency}?`, {
-      fontFamily: 'Arial', fontSize: '16px', color: '#ffe9c9',
+      fontFamily: window.FONT_BODY, fontSize: '16px', color: '#d5e3ff',
     }).setOrigin(0.5));
     const close = () => { this.confirm = null; c.destroy(true); };
     c.add(uiButton(this, W / 2 - 78, py + ph - 50, 128, 48, 'BUY',
       () => { close(); onConfirm(); }, { size: 18 }));
     c.add(uiButton(this, W / 2 + 78, py + ph - 50, 128, 48, 'CANCEL',
-      close, { color: 0x2b3a5e, size: 18 }));
+      close, { color: 0x1d3557, size: 18 }));
   }
 
   clampListScroll() {
@@ -124,7 +124,7 @@ class ShopScene extends Phaser.Scene {
     this.bankText.setText(`${save.bank}`);
     if (this.billsText) this.billsText.setText(`${save.bills || 0}`);
     Object.entries(this.tabButtons).forEach(([name, btn]) => {
-      btn.label.setColor(name === this.tab ? '#f5c542' : '#ffffff');
+      btn.label.setColor(name === this.tab ? '#ffd795' : '#ffffff');
       btn.setAlpha(name === this.tab ? 1 : 0.75);
     });
     if (this.rows) this.rows.destroy(true);
@@ -193,13 +193,13 @@ class ShopScene extends Phaser.Scene {
       icon.setPosition(78, y + 48);
       this.rows.add(icon);
       this.rows.add(this.add.text(150, y + 26, item.name, {
-        fontFamily: FONT, fontSize: '20px', color: '#ffe9c9',
+        fontFamily: FONT, fontSize: '20px', color: '#d5e3ff',
       }));
       const isOwned = owned.includes(key);
       const isActive = key === active;
       let sub = isActive ? activeLabel : isOwned ? 'owned' : `price: ${item.price}`;
       this.rows.add(this.add.text(150, y + 56, sub, {
-        fontFamily: 'Arial', fontSize: '14px', color: '#c9a97f',
+        fontFamily: window.FONT_BODY, fontSize: '14px', color: '#9ecfd1',
       }));
 
       let btn;
@@ -209,7 +209,7 @@ class ShopScene extends Phaser.Scene {
       } else if (isOwned) {
         btn = uiButton(this, this.W - 90, y + 48, 110, 44, 'USE', () => {
           select(key); window.SAVE.save(); this.refresh();
-        }, { color: 0xb8860b, size: 18 });
+        }, { color: 0xfbb400, size: 18 });
       } else {
         const canAfford = save.bank >= item.price;
         btn = uiButton(this, this.W - 90, y + 48, 110, 44,
@@ -234,15 +234,15 @@ class ShopScene extends Phaser.Scene {
       this.rows.add(icon);
       const lvl = save.up[key];
       this.rows.add(this.add.text(150, y + 20, up.name, {
-        fontFamily: FONT, fontSize: '19px', color: '#ffe9c9',
+        fontFamily: FONT, fontSize: '19px', color: '#d5e3ff',
       }));
       this.rows.add(this.add.text(150, y + 48, up.desc, {
-        fontFamily: 'Arial', fontSize: '13px', color: '#c9a97f',
+        fontFamily: window.FONT_BODY, fontSize: '13px', color: '#9ecfd1',
       }));
       // level pips (8 levels)
       for (let p = 0; p < 8; p++) {
         this.rows.add(this.add.circle(156 + p * 18, y + 76, 6,
-          p < lvl ? 0xf5c542 : 0x3a425f));
+          p < lvl ? 0xfbb400 : 0x1d3557));
       }
 
       let btn;
@@ -269,7 +269,7 @@ class ShopScene extends Phaser.Scene {
 
     this.rows.add(this.add.text(this.W / 2, 170 + 4 * 108 + 16,
       'upgrades last longer · LAUNCH PAD is bought with Trump Bucks', {
-        fontFamily: 'Arial', fontSize: '13px', color: '#c9a97f', align: 'center',
+        fontFamily: window.FONT_BODY, fontSize: '13px', color: '#9ecfd1', align: 'center',
       }).setOrigin(0.5));
   }
 
@@ -279,14 +279,14 @@ class ShopScene extends Phaser.Scene {
     const y = this.rowPanel(i);
     this.rows.add(this.add.image(78, y + 48, b.icon).setScale(1.4 * window.TEX_SCALE));
     this.rows.add(this.add.text(150, y + 18, b.name, {
-      fontFamily: FONT, fontSize: '19px', color: '#ffe9c9',
+      fontFamily: FONT, fontSize: '19px', color: '#d5e3ff',
     }));
     this.rows.add(this.add.text(150, y + 44, b.desc, {
-      fontFamily: 'Arial', fontSize: '12px', color: '#c9a97f',
+      fontFamily: window.FONT_BODY, fontSize: '12px', color: '#9ecfd1',
     }));
     this.rows.add(this.add.text(150, y + 68,
       `in stock: ${save.boosts}`, {
-        fontFamily: 'Arial', fontSize: '12px', color: '#c9a97f',
+        fontFamily: window.FONT_BODY, fontSize: '12px', color: '#9ecfd1',
       }));
     const canAfford = (save.bills || 0) >= b.priceBills;
     const priceLabel = `${b.priceBills} BILL${b.priceBills > 1 ? 'S' : ''}`;

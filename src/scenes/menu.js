@@ -61,83 +61,111 @@ class MenuScene extends Phaser.Scene {
     const SS = window.SS, TS = window.TEX_SCALE;
     window.setupCamera(this);
     const W = this.scale.width / SS, H = this.scale.height / SS;
-    const map = CATALOG.MAPS[save.map];
-
-    this.add.image(W / 2, H / 2, 'sky-' + save.map).setScale(TS);
-    this.add.image(W / 2, H - 340, map.sun === 'moon' ? 'moon' : 'sun').setScale(1.6 * TS);
-    this.add.image(W / 2, H - 250, 'coast').setScale(TS);
-    this.add.image(W / 2, H - 90, 'sea-' + save.map).setScale(TS);
-
-    // drifting clouds
-    this.clouds = [];
-    for (let i = 0; i < 4; i++) {
-      const c = this.add.image(
-        Phaser.Math.Between(0, W), Phaser.Math.Between(60, 300), 'cloud'
-      ).setAlpha(0.8).setScale(Phaser.Math.FloatBetween(0.7, 1.3) * TS)
-       .setTint(map.cloudTint);
-      c.speed = Phaser.Math.FloatBetween(8, 20);
-      this.clouds.push(c);
-    }
+    // sky, clouds, mountains and water — shared with the shop and leaderboard
+    this.clouds = drawBackdrop(this, save.map);
 
     // tanker sailing through the strait
-    const tanker = this.add.image(-100, H - 165, 'tanker-' + save.ship).setScale(TS);
+    // sails along the middle of the water band, wherever that band sits
+    const tanker = this.add.image(-100, seaBand(H).seaTop + 70, 'tanker-' + save.ship).setScale(TS);
     this.tweens.add({
       targets: tanker, x: W + 120, duration: 24000, repeat: -1,
       onRepeat: () => { tanker.x = -100; },
     });
 
-    // bank + best pills (refs kept so login/sign-out can update them live)
-    uiPanel(this, 12, 12, 130, 40);
-    this.add.image(34, 32, 'coin').setScale(0.9 * TS);
-    this.bankText = this.add.text(50, 32, `${save.bank}`, {
-      fontFamily: FONT, fontSize: '20px', color: '#f5c542',
-    }).setOrigin(0, 0.5);
-    // Trump Bucks in their own smaller pill under the coins
-    uiPanel(this, 12, 58, 108, 32);
-    this.add.image(32, 74, 'bill').setScale(0.62 * TS);
-    this.billsText = this.add.text(50, 74, `${save.bills || 0}`, {
-      fontFamily: FONT, fontSize: '15px', color: '#8ff0a8',
-    }).setOrigin(0, 0.5);
-    uiPanel(this, W - 202, 12, 130, 40);
-    this.bestText = this.add.text(W - 137, 32, `BEST ${save.best}`, {
-      fontFamily: FONT, fontSize: '16px', color: '#ffe9c9',
-    }).setOrigin(0.5);
+    // Header readouts. Coins, Trump Bucks, best score and the account chip all
+    // share one recipe — the PLAY button's rounded rectangle, flat filled, with
+    // a gold rim — so the row reads as a set. Refs are kept so login/sign-out
+    // can update them live.
+    const T = window.THEME;
+    const M = 16;
 
-    // title
-    this.add.text(W / 2, 160, 'TRUMP JUMP', {
-      fontFamily: FONT, fontSize: '58px', color: '#f5c542',
-      stroke: '#71301f', strokeThickness: 10,
-    }).setOrigin(0.5);
-    this.add.text(W / 2, 212, 'STRAIT OF HORMUZ', {
-      fontFamily: FONT, fontSize: '24px', color: '#ffe9c9',
-      stroke: '#71301f', strokeThickness: 6,
-    }).setOrigin(0.5);
+    // Currency readouts, sized to whatever they hold — a box built for "16278"
+    // looks broken around "46". Coins take the reward gold; Trump Bucks take
+    // tertiary, so the two never read as the same currency at a glance.
+    this.coinPill = this.makeStatPill(M, 12, 'coin', 0.66, `${save.bank}`, '#ffd795', 34, 19);
+    this.bankText = this.coinPill.text;
+    this.billPill = this.makeStatPill(M, 52, 'bill', 0.48, `${save.bills || 0}`, '#9ecfd1', 34, 19);
+    this.billsText = this.billPill.text;
+
+    // BEST is right-anchored so it grows leftward as the score gets longer and
+    // never collides with the account chip beside it.
+    this.bestG = this.add.graphics();
+    this.bestText = this.add.text(0, 29, `BEST ${save.best}`, {
+      fontFamily: window.FONT_LABEL, fontSize: '12px', color: '#ffd795',
+    }).setOrigin(1, 0.5).setDepth(1);
+    this.layoutBest = () => {
+      // ends 8 units left of the avatar (which is 34 wide, inset 12 from the
+      // edge) — derived rather than guessed, so the two stay paired
+      const right = W - 12 - 34 - 8;
+      const w = this.bestText.width + 20;
+      this.bestText.x = right - 12;
+      this.bestG.clear();
+      uiPanel(this, right - w, 12, w, 34, {
+        g: this.bestG, color: T.surfaceHighest, radius: 12,
+        borderWidth: 2, strokeColor: T.secondary,
+      });
+    };
+    this.layoutBest();
 
     // welcome greeting above the title (updates on login / sign-out / name change)
+    // It sits over drifting clouds, so it takes the same navy outline and hard
+    // shadow the title wears — that is how everything in this system stays
+    // readable against whatever the sky is doing behind it.
     this.welcomeText = this.add.text(W / 2, 104, '', {
-      fontFamily: FONT, fontSize: '17px', color: '#f5c542',
-      stroke: '#71301f', strokeThickness: 4,
+      fontFamily: window.FONT_LABEL, fontSize: '14px', color: '#ffd795',
+      stroke: '#1d3557', strokeThickness: 5,
     }).setOrigin(0.5);
+    this.welcomeText.setShadow(0, 3, '#1d3557', 0, false, true);
     this.refreshWelcome();
 
-    // bouncing trump with glow — centered between the header and the powerups
-    const glow = this.add.image(W / 2, 342, 'sun').setScale(1.1 * TS).setAlpha(0.5);
+    // Title: Anybody 900, uppercase, a 2px navy stroke and a hard unblurred
+    // navy shadow directly below it. That shadow is the signature of the system.
+    const title = this.add.text(W / 2, 158, 'TRUMP JUMP', {
+      fontFamily: FONT, fontSize: '60px', color: '#fbb400',
+      stroke: '#1d3557', strokeThickness: 8,
+    }).setOrigin(0.5);
+    title.setShadow(0, 7, '#1d3557', 0, false, true);
+    const sub = this.add.text(W / 2, 210, 'STRAIT OF HORMUZ', {
+      fontFamily: FONT, fontStyle: '800', fontSize: '26px', color: '#ffd795',
+      stroke: '#1d3557', strokeThickness: 5,
+    }).setOrigin(0.5);
+    sub.setShadow(0, 3, '#1d3557', 0, false, true);
+
+    // bouncing trump on a warm glow — the comp's powerup-glow radial, scaled up
+    // Everything below here is anchored to the bottom edge, so the extra height
+    // on a tall phone opens up around the character rather than leaving a gap
+    // under the buttons. Declared here because the character sits between the
+    // subtitle and the chip row and needs to know where that row lands.
+    // These are the original game's positions (PLAY at 556, chips at 452,
+    // character at 332 in an 800-tall world) expressed as offsets from the
+    // bottom, so a taller phone opens space around the character instead of
+    // under the buttons. The character is centred in whatever gap results.
+    const playY = H - 214;
+    const chipY = playY - 104, chip = 52;
+    const charY = Math.round((210 + chipY - chip / 2) / 2);
+    // He grows into the gap between the subtitle and the chips rather than
+    // floating in it — 150 tall is the original, against the 216 units of room
+    // an 800-tall world leaves him.
+    const room = chipY - chip / 2 - 210;
+    const charH = 150 * Phaser.Math.Clamp(room / 216, 0.82, 1.5);
+    const glow = this.add.image(W / 2, charY + 10, 'sun')
+      .setScale(0.95 * TS * (charH / 150)).setAlpha(0.42);
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
-    this.char = this.add.image(W / 2, 332, window.SKIN.idle).setScale(150 / srcH);
+    this.char = this.add.image(W / 2, charY, window.SKIN.idle).setScale(charH / srcH);
     this.tweens.add({
-      targets: this.char, y: 322, duration: 1800,
+      targets: this.char, y: charY - 10, duration: 1800,
       yoyo: true, repeat: -1, ease: 'Sine.inOut',
     });
     this.tweens.add({
-      targets: glow, alpha: 0.35, duration: 1800, yoyo: true, repeat: -1,
+      targets: glow, alpha: 0.28, duration: 1800, yoyo: true, repeat: -1,
       ease: 'Sine.inOut',
     });
 
     // left/right arrows to switch the equipped skin right from the menu
     // (only among owned skins; hidden when the player owns just one)
     this.skinArrows = [
-      this.makeSkinArrow(W / 2 - 120, 332, -1),
-      this.makeSkinArrow(W / 2 + 120, 332, 1),
+      this.makeSkinArrow(W / 2 - Math.max(120, charH * 0.86), charY + 4, -1),
+      this.makeSkinArrow(W / 2 + Math.max(120, charH * 0.86), charY + 4, 1),
     ];
     this.refreshSkinArrows();
 
@@ -151,7 +179,11 @@ class MenuScene extends Phaser.Scene {
     this.input.on('pointerup', onUp);
     this.input.on('pointerupoutside', onUp);
 
-    // powerup legend, compact — the JET icon uses the equipped skin's cap
+    // Powerup legend. No containers: five navy boxes punched five dark holes in
+    // a warm sky and fought the buttons below for attention. The icons are
+    // already distinct shapes in distinct colours, so they carry themselves —
+    // each just gets the system's hard navy shadow (the same sprite, tinted and
+    // offset) to lift it off whatever the sky is doing behind it.
     const skinDef = CATALOG.SKINS[save.skin] || {};
     const capIcon = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
     const legend = [
@@ -160,38 +192,48 @@ class MenuScene extends Phaser.Scene {
     ];
     legend.forEach(([key, label], i) => {
       const x = W / 2 + (i - 2) * 84;
-      const icon = this.add.image(x, 452, key).setScale(TS);
-      if (label === 'JET') this.jetIcon = icon; // updates when the skin changes
-      this.add.text(x, 480, label, {
-        fontFamily: FONT, fontSize: '13px', color: '#ffd9a8',
-      }).setOrigin(0.5);
+      const shadow = this.add.image(x, chipY + 4, key)
+        .setScale(1.15 * TS).setTint(T.outline).setAlpha(0.9);
+      const icon = this.add.image(x, chipY, key).setScale(1.15 * TS);
+      if (label === 'JET') {
+        this.jetIcon = icon;          // both update when the skin changes
+        this.jetShadow = shadow;
+      }
+      // the background sun sits right behind this row, so the labels carry the
+      // system's hard navy shadow to stay legible over the bright middle
+      this.add.text(x, chipY + chip / 2 + 13, label, {
+        fontFamily: window.FONT_LABEL, fontSize: '12px', color: '#ffd795',
+      }).setOrigin(0.5).setShadow(0, 2, '#1d3557', 0, false, true);
     });
-    this.add.text(W / 2, 512, 'dodge drones and missiles', {
-      fontFamily: 'Arial', fontSize: '14px', color: '#ffd9a8',
-    }).setOrigin(0.5);
 
-    // buttons
-    uiButton(this, W / 2, 556, 260, 60, 'PLAY', () => this.go(), { size: 28 });
-    uiButton(this, W / 2, 622, 200, 48, 'SHOP', () => {
+    // Buttons run the full content width and sit bottom-heavy, in thumb reach.
+    // PLAY is deliberately the biggest thing on the screen.
+    // Sized down from the comp: at full width and height the stack crowded the
+    // chips above it. The three narrow as they descend in importance, which
+    // also gives the eye a clear order.
+    const bw = 280;
+    uiButton(this, W / 2, playY, bw, 62, 'PLAY', () => this.go(), { size: 32, radius: 15 });
+    uiButton(this, W / 2, H - 148, bw - 60, 48, 'SHOP', () => {
       window.SFX.init();
       this.scene.start('Shop');
-    }, { color: 0xb8860b, size: 20 });
-    uiButton(this, W / 2, 682, 200, 48, 'LEADERBOARD', () => {
+    }, { color: T.secondary, size: 22, radius: 14 });
+    uiButton(this, W / 2, H - 88, bw - 92, 46, 'LEADERBOARD', () => {
       window.SFX.init();
       this.scene.start('Leaderboard');
-    }, { color: 0x2b3a5e, size: 18 });
+    }, { color: T.surfaceHighest, size: 18, radius: 14 });
 
-    this.add.text(W / 2, 732, 'arrows / A D / touch  •  P: pause', {
-      fontFamily: 'Arial', fontSize: '13px', color: '#ffd9a8',
-    }).setOrigin(0.5);
+    this.add.text(W / 2, H - 38, 'arrows / A D / touch • P: pause', {
+      fontFamily: window.FONT_LABEL, fontSize: '13px', color: '#e4bebc',
+    }).setOrigin(0.5).setAlpha(0.7);
 
     // settings gear (bottom-left) — enter friend codes to unlock secret skins
-    const gear = this.add.container(40, H - 40).setDepth(6);
-    const gearBg = this.add.circle(0, 0, 21, 0x2b3a5e)
-      .setStrokeStyle(3, 0xffffff, 0.75)
+    const gear = this.add.container(40, H - 38).setDepth(6);
+    gear.add(this.add.circle(0, 3, 23, T.outline));   // the hard edge it sits on
+    const gearBg = this.add.circle(0, 0, 23, T.surfaceHigh)
+      .setStrokeStyle(4, T.outlineVariant, 1)
       .setInteractive({ useHandCursor: true });
     gear.add(gearBg);
-    gear.add(this.add.text(0, 1, '⚙', { fontSize: '22px' }).setOrigin(0.5));
+    gear.add(this.add.text(0, 1, '⚙', { fontSize: '21px' }).setOrigin(0.5));
     gearBg.on('pointerover', () => gear.setScale(1.1));
     gearBg.on('pointerout', () => gear.setScale(1));
     gearBg.on('pointerup', () => {
@@ -269,13 +311,15 @@ class MenuScene extends Phaser.Scene {
   makeSkinArrow(x, y, dir) {
     const cont = this.add.container(x, y).setDepth(6);
 
+    const T = window.THEME;
     // soft gold halo behind the disc
-    const glow = this.add.circle(0, 0, 26, 0xf5c542, 0.16);
+    const glow = this.add.circle(0, 0, 26, T.secondary, 0.18);
     cont.add(glow);
+    cont.add(this.add.circle(0, 3, 22, T.outline));   // the hard edge it sits on
 
-    // dark disc with a gold rim
-    const bg = this.add.circle(0, 0, 21, 0x141a33, 0.92)
-      .setStrokeStyle(3, 0xf5c542, 0.95)
+    // navy disc with a gold rim
+    const bg = this.add.circle(0, 0, 22, T.surfaceHighest, 1)
+      .setStrokeStyle(4, T.secondary, 1)
       .setInteractive({ useHandCursor: true });
     cont.add(bg);
 
@@ -284,14 +328,14 @@ class MenuScene extends Phaser.Scene {
     const draw = (g, color, w) => {
       g.lineStyle(w, color, 1);
       g.beginPath();
-      g.moveTo(s * -4, -8);
-      g.lineTo(s * 5, 0);
-      g.lineTo(s * -4, 8);
+      g.moveTo(s * -6, -11);
+      g.lineTo(s * 7, 0);
+      g.lineTo(s * -6, 11);
       g.strokePath();
     };
     const chevron = this.add.graphics();
-    draw(chevron, 0x8a5a10, 6);   // subtle darker underlay for depth
-    draw(chevron, 0xffe9a8, 4);   // bright gold chevron
+    draw(chevron, T.outline, 7);      // navy underlay, same outline as everything
+    draw(chevron, 0xffd795, 4);       // bright gold chevron
     cont.add(chevron);
 
     // gentle idle: halo breathes and the button nudges outward, hinting "tap me"
@@ -306,8 +350,8 @@ class MenuScene extends Phaser.Scene {
       }),
     ];
 
-    bg.on('pointerover', () => { bg.setFillStyle(0x24305a, 0.95); cont.setScale(1.12); });
-    bg.on('pointerout', () => { bg.setFillStyle(0x141a33, 0.92); cont.setScale(1); });
+    bg.on('pointerover', () => { bg.setFillStyle(T.surfaceHigh, 1); cont.setScale(1.12); });
+    bg.on('pointerout', () => { bg.setFillStyle(T.surfaceHighest, 1); cont.setScale(1); });
     bg.on('pointerdown', () => cont.setScale(0.9));
     bg.on('pointerup', () => {
       cont.setScale(1.12);
@@ -369,6 +413,7 @@ class MenuScene extends Phaser.Scene {
     const skinDef = CATALOG.SKINS[id] || {};
     const capIcon = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
     if (this.jetIcon) this.jetIcon.setTexture(capIcon);
+    if (this.jetShadow) this.jetShadow.setTexture(capIcon);  // keep the shadow in step
   }
 
   onAuth() {
@@ -409,11 +454,41 @@ class MenuScene extends Phaser.Scene {
     if (this.welcomeText) this.welcomeText.setText(`WELCOME, ${(name || 'GUEST').toUpperCase()}`);
   }
 
+  // A pill that fits its own contents: icon, gap, value. Returns a `set()` so
+  // a changed value re-lays the pill out instead of leaving it stretched.
+  makeStatPill(x, y, iconKey, iconScale, value, color, h = 40, size = 22) {
+    const TS = window.TEX_SCALE;
+    const g = this.add.graphics();
+    const icon = this.add.image(0, y + h / 2, iconKey).setScale(iconScale * TS).setDepth(1);
+    const text = this.add.text(0, y + h / 2 + 1, value, {
+      fontFamily: window.FONT, fontSize: size + 'px', color,
+    }).setOrigin(0, 0.5).setDepth(1);
+
+    const layout = () => {
+      const padL = 10, gap = 7, padR = 12;
+      icon.x = x + padL + icon.displayWidth / 2;
+      text.x = icon.x + icon.displayWidth / 2 + gap;
+      const w = padL + icon.displayWidth + gap + text.width + padR;
+      g.clear();
+      // Same shape as the PLAY button — flat fill, 4px gold rim, no sunken
+      // shading. Every readout in the header is built from this one recipe.
+      uiPanel(this, x, y, w, h, {
+        g, color: window.THEME.surfaceHighest, radius: 12,
+        borderWidth: 2, strokeColor: window.THEME.secondary,
+      });
+    };
+    layout();
+    return { text, icon, set: (v) => { text.setText(v); layout(); } };
+  }
+
   refreshStats() {
     const save = window.SAVE.data;
-    if (this.bankText) this.bankText.setText(`${save.bank}`);
-    if (this.billsText) this.billsText.setText(`${save.bills || 0}`);
-    if (this.bestText) this.bestText.setText(`BEST ${save.best}`);
+    if (this.coinPill) this.coinPill.set(`${save.bank}`);
+    if (this.billPill) this.billPill.set(`${save.bills || 0}`);
+    if (this.bestText) {
+      this.bestText.setText(`BEST ${save.best}`);
+      if (this.layoutBest) this.layoutBest();
+    }
   }
 
   updateAccountChip() {
@@ -421,11 +496,14 @@ class MenuScene extends Phaser.Scene {
     const fb = window.FB;
     const W = this.scale.width / window.SS;
     const signedIn = fb && (fb.user || this.authHint());
-    const cx = W - 32, cy = 33, R = 19;
+    const T = window.THEME;
+    // A profile picture stays round — that shape is what says "this is you" —
+    // but it wears the same 2px gold rim as the readouts beside it, so it still
+    // belongs to the row.
+    const R = 17, cx = W - 12 - R, cy = 29;
     const c = this.add.container(cx, cy).setDepth(6);
-    const bg = signedIn ? 0x2e7d32 : 0x2b3a5e;
-    const circle = this.add.circle(0, 0, R, bg)
-      .setStrokeStyle(3, 0xffffff, 0.85)
+    const circle = this.add.circle(0, 0, R, signedIn ? T.surfaceHigh : T.surfaceHighest)
+      .setStrokeStyle(2, T.secondary, 1)
       .setInteractive({ useHandCursor: true });
     c.add(circle);
 
