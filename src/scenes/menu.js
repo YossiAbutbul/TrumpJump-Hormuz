@@ -180,19 +180,6 @@ class MenuScene extends Phaser.Scene {
     ];
     this.refreshSkinArrows();
 
-    // everything above the button stack is swipe territory; below it, taps only
-    this.swipeMaxY = playY - 40;
-
-    // touch: swipe left/right across the character area to flip skins on phone
-    let downX = 0, downY = 0;
-    this.input.on('pointerdown', (p) => { downX = p.x; downY = p.y; });
-    const onUp = (p) => {
-      const SS = window.SS;
-      this.onSwipe((p.x - downX) / SS, (p.y - downY) / SS, downY / SS);
-    };
-    this.input.on('pointerup', onUp);
-    this.input.on('pointerupoutside', onUp);
-
     // Powerup legend. No containers: five navy boxes punched five dark holes in
     // a warm sky and fought the buttons below for attention. The icons are
     // already distinct shapes in distinct colours, so they carry themselves —
@@ -420,19 +407,6 @@ class MenuScene extends Phaser.Scene {
     if (!this.skinArrows) return;
     const canSwitch = this.ownedSkins().length > 1;
     this.skinArrows.forEach(a => a.setShown(canSwitch));
-  }
-
-  // decide whether a pointer gesture over the character area is a skin swipe.
-  // deltas + start-y are in logical (480×800) units. Only fires for a clearly
-  // horizontal drag above the button stack; ignores taps and vertical scrolls.
-  onSwipe(dx, dy, startY) {
-    // keep the button zone tap-only. Derived from where PLAY actually landed:
-    // a hardcoded 520 belonged to the 800-tall world and cut the swipe area off
-    // halfway up a phone, so most swipes over the character did nothing.
-    if (startY >= (this.swipeMaxY || 520)) return false;
-    if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy) * 1.5) return false;
-    this.cycleSkin(dx < 0 ? 1 : -1);                 // swipe left → next, right → prev
-    return true;
   }
 
   // switch the equipped skin to the next/previous owned one and refresh visuals
