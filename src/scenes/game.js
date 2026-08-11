@@ -47,7 +47,11 @@ class GameScene extends Phaser.Scene {
     this.billCount = 0; // rare Trump Bucks collected this run
     this.maxMeters = 0;
     this.nextMilestone = 300;
-    this.baseY = H - 150;
+    // The starting tanker floats ON the waterline, so it is measured from the
+    // sea band rather than from the bottom of the screen: with a fixed offset
+    // from H it sank further below the horizon every time the band's height
+    // changed, and on a tall phone it started the run down in the corner.
+    this.baseY = seaBand(H).seaTop + 14;
     window.RUNGUARD.begin(this); // verified altitude tracking (needs baseY)
     // open the run on the server too, so the finished trace can be measured
     // against real elapsed server time. Async and non-blocking.

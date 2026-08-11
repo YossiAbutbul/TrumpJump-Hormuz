@@ -35,11 +35,15 @@ window.setupCamera = (scene) => {
 // The world is a fixed 480 units wide; its HEIGHT follows the device so a tall
 // phone fills the screen instead of showing letterbox bands above and below.
 // Clamped at both ends: below 1.6 the button stack has nowhere to go, and above
-// 2.1 a very tall handset would see so far up the tower that it changes the
-// game. Scenes read this back via this.scale.height, so nothing hardcodes 800.
+// 2.4 a very tall handset would see so far up the tower that it changes the
+// game. 2.4 covers every current handset (19.5:9 = 2.17, 20:9 = 2.22, 21:9 =
+// 2.33); a lower ceiling left FIT letterboxing black bands above and below on
+// a phone, which is what made the screen read as cropped and the header row as
+// floating low. Scenes read this back via this.scale.height, so nothing
+// hardcodes 800.
 const W_UNITS = 480;
 const aspect = Phaser.Math.Clamp(
-  (window.innerHeight || 800) / (window.innerWidth || 480), 1.6, 2.1
+  (window.innerHeight || 800) / (window.innerWidth || 480), 1.6, 2.4
 );
 const H_UNITS = Math.round(W_UNITS * aspect);
 window.W_UNITS = W_UNITS;
