@@ -32,20 +32,20 @@ window.setupCamera = (scene) => {
   scene.cameras.main.setOrigin(0, 0).setZoom(SS);
 };
 
-// The world is a fixed 480 units wide; its HEIGHT follows the device so a tall
-// phone fills the screen instead of showing letterbox bands above and below.
-// Clamped at both ends: below 1.6 the button stack has nowhere to go, and above
-// 2.4 a very tall handset would see so far up the tower that it changes the
-// game. 2.4 covers every current handset (19.5:9 = 2.17, 20:9 = 2.22, 21:9 =
-// 2.33); a lower ceiling left FIT letterboxing black bands above and below on
-// a phone, which is what made the screen read as cropped and the header row as
-// floating low. Scenes read this back via this.scale.height, so nothing
-// hardcodes 800.
+// The world is a fixed 480×800 — the same shape on a phone as on a desktop.
+//
+// It used to stretch its height to the device's aspect so a tall handset filled
+// the screen edge to edge. That is not free: at 20:9 the world became 480×1065,
+// which is a third more vertical room over the same width, so the menu spread
+// out, the character floated in a gap, and the whole thing read as stretched
+// next to the desktop build. One shape everywhere is worth more than the extra
+// pixels — FIT scales it to fit and the page's blue gradient shows through
+// above and below, which the canvas's rounded corners and gold glow turn into a
+// deliberate frame rather than a letterbox.
+//
+// Scenes still read this back via this.scale.height, so nothing hardcodes 800.
 const W_UNITS = 480;
-const aspect = Phaser.Math.Clamp(
-  (window.innerHeight || 800) / (window.innerWidth || 480), 1.6, 2.4
-);
-const H_UNITS = Math.round(W_UNITS * aspect);
+const H_UNITS = 800;
 window.W_UNITS = W_UNITS;
 window.H_UNITS = H_UNITS;
 
