@@ -47,11 +47,13 @@ class GameScene extends Phaser.Scene {
     this.billCount = 0; // rare Trump Bucks collected this run
     this.maxMeters = 0;
     this.nextMilestone = 300;
-    // The starting tanker floats ON the waterline, so it is measured from the
-    // sea band rather than from the bottom of the screen: with a fixed offset
-    // from H it sank further below the horizon every time the band's height
-    // changed, and on a tall phone it started the run down in the corner.
-    this.baseY = seaBand(H).seaTop + 14;
+    // Height zero is the sea itself. There is no starting platform: the run
+    // opens with the player on the water at the middle of the strait, and the
+    // first thing to land on is a normal randomly-placed platform overhead.
+    // Taken from the sea band rather than a fixed offset from the bottom of the
+    // screen, so the waterline the player stands on is the one that is drawn.
+    this.baseY = seaBand(H).seaTop;
+    this.startX = W / 2;
     window.RUNGUARD.begin(this); // verified altitude tracking (needs baseY)
     // open the run on the server too, so the finished trace can be measured
     // against real elapsed server time. Async and non-blocking.
@@ -118,7 +120,7 @@ class GameScene extends Phaser.Scene {
     // custom texture if it actually loaded
     const skinDef = (window.CATALOG.SKINS[window.SAVE.data.skin]) || {};
     this.capKey = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
-    this.player = this.physics.add.sprite(W / 2, this.baseY - 60, this.skin.idle);
+    this.player = this.physics.add.sprite(this.startX, this.baseY - 60, this.skin.idle);
     this.player.setDepth(10);
     const src = this.textures.get(this.skin.idle).getSourceImage();
     this.pScale = 94 / src.height;
@@ -142,20 +144,18 @@ class GameScene extends Phaser.Scene {
       .setOffset((src.width - bw) / 2, src.height - bh);
     this.player.setVelocityY(-260);
 
-    this.spawnPlatform(W / 2, this.baseY, 'tanker');
+    // No opening platform — the sea below is what the player stands on. The
+    // first ship is a normal roll, so where it lands (and what it is) changes
+    // every run; the gap is measured from the water rather than from a deck.
     this.nextPlatformY = this.baseY - 100;
-    this.lastPlatX = W / 2; // each platform stays within reach of the last one
+    this.lastPlatX = this.startX; // each platform stays within reach of the last one
     for (let i = 0; i < 8; i++) this.spawnNext();
 
-    // the sea is a safe, invisible bounce floor at the very start — drifting off
-    // the first platform into the water bounces you instead of killing you. It
-    // is a normal platform, so it scrolls down and gets culled once you climb
-    // clear of the start (after which a fall is lethal again).
-    // Anchored to the start platform, not to the water sprite. It used to be
-    // placed off `this.sea`, which made an invisible bit of collision geometry
-    // move whenever the background art moved; this keeps it exactly 56 below
-    // the first tanker regardless of how the sea is drawn.
-    const water = this.platforms.create(W / 2, this.baseY + 56, 'spark');
+    // The sea is the ground: an invisible surface on the waterline that bounces
+    // the player instead of killing them. It is a normal platform, so it
+    // scrolls down and gets culled once the climb is clear of the start — after
+    // which falling back to the water is lethal again.
+    const water = this.platforms.create(W / 2, seaTop + 2, 'spark');
     water.type = 'water';
     water.setVisible(false).setScale(1);
     water.body.setSize(W * 3, 20);

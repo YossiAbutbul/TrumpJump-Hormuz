@@ -27,9 +27,19 @@ export const dayOfCycle = (n) => ((Math.max(1, n) - 1) % REWARDS.length) + 1;
 
 export const rewardFor = (n) => REWARDS[dayOfCycle(n) - 1];
 
-// The day a moment belongs to, as 'YYYY-MM-DD' in UTC. UTC (not the player's
-// zone) is what makes this checkable: the reset is the same instant worldwide
-// and cannot be moved by changing a device's timezone.
-export const dayKey = (ms) => new Date(ms).toISOString().slice(0, 10);
+// The day a moment belongs to, as 'YYYY-MM-DD' in Israel time — the bonus
+// resets at 00:00 in Jerusalem, not at UTC midnight.
+//
+// Still one fixed instant worldwide, which is what keeps this checkable: the
+// zone is baked in here on the server, so a player changing their device's
+// timezone moves nothing. en-CA is the locale that formats as YYYY-MM-DD, and
+// the zone handles IST/IDT (UTC+2/+3) on its own.
+//
+// src/systems/daily.js has the same formatter so the modal agrees with the
+// server about which day it is.
+const IL_DAY = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+export const dayKey = (ms) => IL_DAY.format(new Date(ms));
 
 export const prevDayKey = (ms) => dayKey(ms - 86400000);

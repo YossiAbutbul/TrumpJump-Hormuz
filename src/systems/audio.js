@@ -59,7 +59,13 @@ class Sfx {
   }
 
   tone(freq, dur, type = 'square', vol = 0.07, slideTo = 0) {
-    if (!this.ctx || this.muted || (window.SAVE && window.SAVE.data.muted)) return;
+    if (this.mutedNow()) return;
+    // Build the context on first use rather than waiting for someone to call
+    // init(). It used to be created only when a scene started, so every sound
+    // before that — the menu's own buttons — fell into a null context and was
+    // silent until the player happened to open the shop or start a run.
+    if (!this.ctx) this.init();
+    if (!this.ctx) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
@@ -152,3 +158,11 @@ class Sfx {
 }
 
 window.SFX = new Sfx();
+
+// A browser will not start an audio context outside a user gesture, so the
+// first touch or key anywhere in the page opens it — whatever that gesture was
+// for. Capture phase, so this runs before the handler that wants to make the
+// sound. Nothing is played here; a muted save just opens a silent context.
+['pointerdown', 'touchend', 'keydown'].forEach((ev) => {
+  window.addEventListener(ev, () => window.SFX.init(), { once: true, capture: true });
+});

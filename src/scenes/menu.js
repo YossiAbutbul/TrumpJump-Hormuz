@@ -90,8 +90,10 @@ class MenuScene extends Phaser.Scene {
     // BEST is right-anchored so it grows leftward as the score gets longer and
     // never collides with the account chip beside it.
     this.bestG = this.add.graphics();
+    // Same face and size as the coin and bill readouts beside it — set in the
+    // mono label face it was the one pill in the row wearing a different voice.
     this.bestText = this.add.text(0, 29, `BEST ${save.best}`, {
-      fontFamily: window.FONT_LABEL, fontSize: '12px', color: '#ffd795',
+      fontFamily: window.FONT, fontSize: '19px', color: '#ffd795',
     }).setOrigin(1, 0.5).setDepth(1);
     this.layoutBest = () => {
       // ends 8 units left of the avatar (which is 34 wide, inset 12 from the
