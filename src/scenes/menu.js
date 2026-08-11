@@ -90,8 +90,10 @@ class MenuScene extends Phaser.Scene {
     // BEST is right-anchored so it grows leftward as the score gets longer and
     // never collides with the account chip beside it.
     this.bestG = this.add.graphics();
+    // Same face and size as the coin and bill readouts beside it — set in the
+    // mono label face it was the one pill in the row wearing a different voice.
     this.bestText = this.add.text(0, 29, `BEST ${save.best}`, {
-      fontFamily: window.FONT_LABEL, fontSize: '12px', color: '#ffd795',
+      fontFamily: window.FONT, fontSize: '19px', color: '#ffd795',
     }).setOrigin(1, 0.5).setDepth(1);
     this.layoutBest = () => {
       // ends 8 units left of the avatar (which is 34 wide, inset 12 from the
@@ -145,9 +147,13 @@ class MenuScene extends Phaser.Scene {
     const charY = Math.round((210 + chipY - chip / 2) / 2);
     // He grows into the gap between the subtitle and the chips rather than
     // floating in it — 150 tall is the original, against the 216 units of room
-    // an 800-tall world leaves him.
+    // an 800-tall world leaves him. The ceiling is deliberately close to 1: a
+    // tall phone leaves ~2× the room, and letting him take all of it made the
+    // menu a portrait with the buttons as a footnote.
     const room = chipY - chip / 2 - 210;
-    const charH = 150 * Phaser.Math.Clamp(room / 216, 0.82, 1.5);
+    const charH = 150 * Phaser.Math.Clamp(room / 216, 0.82, 1.15);
+    // kept so cycling skins re-scales to the SAME height this was built at
+    this.charH = charH;
     const glow = this.add.image(W / 2, charY + 10, 'sun')
       .setScale(0.95 * TS * (charH / 150)).setAlpha(0.42);
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
@@ -163,21 +169,16 @@ class MenuScene extends Phaser.Scene {
 
     // left/right arrows to switch the equipped skin right from the menu
     // (only among owned skins; hidden when the player owns just one)
+    // Placed off the character's OWN width, not off a guessed constant: the
+    // sprites are far narrower than they are tall, so scaling the gap with
+    // height parked the arrows against the screen edges on a phone. 30 units of
+    // air past his silhouette, and never so close they overlap a wide skin.
+    const arrowGap = Phaser.Math.Clamp(this.char.displayWidth / 2 + 30, 86, W / 2 - 34);
     this.skinArrows = [
-      this.makeSkinArrow(W / 2 - Math.max(120, charH * 0.86), charY + 4, -1),
-      this.makeSkinArrow(W / 2 + Math.max(120, charH * 0.86), charY + 4, 1),
+      this.makeSkinArrow(W / 2 - arrowGap, charY + 4, -1),
+      this.makeSkinArrow(W / 2 + arrowGap, charY + 4, 1),
     ];
     this.refreshSkinArrows();
-
-    // touch: swipe left/right across the character area to flip skins on phone
-    let downX = 0, downY = 0;
-    this.input.on('pointerdown', (p) => { downX = p.x; downY = p.y; });
-    const onUp = (p) => {
-      const SS = window.SS;
-      this.onSwipe((p.x - downX) / SS, (p.y - downY) / SS, downY / SS);
-    };
-    this.input.on('pointerup', onUp);
-    this.input.on('pointerupoutside', onUp);
 
     // Powerup legend. No containers: five navy boxes punched five dark holes in
     // a warm sky and fought the buttons below for attention. The icons are
@@ -230,12 +231,12 @@ class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0.7);
 
     // settings gear (bottom-left) — enter friend codes to unlock secret skins
-    const gear = this.add.container(40, H - 38).setDepth(6);
-    const gearBg = this.add.circle(0, 0, 17, T.surfaceHighest)
+    const gear = this.add.container(46, H - 40).setDepth(6);
+    const gearBg = this.add.circle(0, 0, 22, T.surfaceHighest)
       .setStrokeStyle(2, T.secondary, 1)
       .setInteractive({ useHandCursor: true });
     gear.add(gearBg);
-    gear.add(this.add.text(0, 1, '⚙', { fontSize: '17px' }).setOrigin(0.5));
+    gear.add(this.add.text(0, 1, '⚙', { fontSize: '22px' }).setOrigin(0.5));
     gearBg.on('pointerover', () => gear.setScale(1.1));
     gearBg.on('pointerout', () => gear.setScale(1));
     gearBg.on('pointerup', () => {
@@ -245,13 +246,13 @@ class MenuScene extends Phaser.Scene {
 
     // daily bonus (bottom-right), mirroring the settings gear. The red dot —
     // and the nudge tween behind it — mean there is a bonus waiting to claim.
-    const daily = this.add.container(W - 40, H - 38).setDepth(6);
-    const dailyBg = this.add.circle(0, 0, 17, T.surfaceHighest)
+    const daily = this.add.container(W - 46, H - 40).setDepth(6);
+    const dailyBg = this.add.circle(0, 0, 22, T.surfaceHighest)
       .setStrokeStyle(2, T.secondary, 1)
       .setInteractive({ useHandCursor: true });
     daily.add(dailyBg);
-    daily.add(this.add.text(0, 1, '🎁', { fontSize: '17px' }).setOrigin(0.5));
-    this.dailyDot = this.add.circle(12, -12, 5, T.primaryLight)
+    daily.add(this.add.text(0, 1, '🎁', { fontSize: '22px' }).setOrigin(0.5));
+    this.dailyDot = this.add.circle(16, -16, 6, T.primaryLight)
       .setStrokeStyle(2, T.outline, 1)
       .setVisible(false);
     daily.add(this.dailyDot);
@@ -408,16 +409,6 @@ class MenuScene extends Phaser.Scene {
     this.skinArrows.forEach(a => a.setShown(canSwitch));
   }
 
-  // decide whether a pointer gesture over the character area is a skin swipe.
-  // deltas + start-y are in logical (480×800) units. Only fires for a clearly
-  // horizontal drag above the button stack; ignores taps and vertical scrolls.
-  onSwipe(dx, dy, startY) {
-    if (startY >= 520) return false;                 // keep the button zone tap-only
-    if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy) * 1.5) return false;
-    this.cycleSkin(dx < 0 ? 1 : -1);                 // swipe left → next, right → prev
-    return true;
-  }
-
   // switch the equipped skin to the next/previous owned one and refresh visuals
   cycleSkin(dir) {
     const owned = this.ownedSkins();
@@ -435,8 +426,10 @@ class MenuScene extends Phaser.Scene {
       fly: this.textures.exists(`skin-${id}-fly`) ? `skin-${id}-fly` : `skin-${id}-idle`,
       hit: this.textures.exists(`skin-${id}-hit`) ? `skin-${id}-hit` : null,
     };
+    // scale to the height create() sized him at — a flat 150 here shrank him
+    // on the first swipe of every tall-phone session
     const srcH = this.textures.get(window.SKIN.idle).getSourceImage().height;
-    this.char.setTexture(window.SKIN.idle).setScale(150 / srcH);
+    this.char.setTexture(window.SKIN.idle).setScale((this.charH || 150) / srcH);
     const skinDef = CATALOG.SKINS[id] || {};
     const capIcon = (skinDef.cap && this.textures.exists(skinDef.cap)) ? skinDef.cap : 'cap';
     if (this.jetIcon) this.jetIcon.setTexture(capIcon);

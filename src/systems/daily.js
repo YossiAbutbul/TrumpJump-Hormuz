@@ -23,8 +23,18 @@ window.DAILY = {
     { coins: 1500, bills: 3 },
   ],
 
-  // UTC day key, matching the server's reset boundary exactly
-  dayKey(ms) { return new Date(ms).toISOString().slice(0, 10); },
+  // Day key in Israel time, matching the server's reset boundary exactly
+  // (api/_lib/daily.js builds the same formatter). The day flips at 00:00 in
+  // Jerusalem for every player, wherever they are — the zone is fixed here, so
+  // it is not the device's.
+  IL_DAY: new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+  }),
+  IL_CLOCK: new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit',
+    second: '2-digit', hourCycle: 'h23',
+  }),
+  dayKey(ms) { return this.IL_DAY.format(new Date(ms)); },
 
   // What the modal should show right now, from the loaded profile:
   //   streak      days claimed in a row, as the server last told us
@@ -52,13 +62,19 @@ window.DAILY = {
     };
   },
 
-  // ms until the next UTC midnight — when the bonus comes back
+  // ms until the next midnight in Israel — when the bonus comes back.
+  // Measured off the Jerusalem wall clock rather than the device's, so the
+  // countdown means the same thing to a player abroad. On the two DST nights a
+  // year the hour the clock jumps is not accounted for, which can leave this an
+  // hour out for part of that day; the claim itself is the server's call
+  // regardless, so the cost is a slightly wrong countdown, not a wrong payout.
   msToReset() {
-    const now = new Date();
-    const next = Date.UTC(
-      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0
-    );
-    return Math.max(0, next - now.getTime());
+    const now = Date.now();
+    const parts = {};
+    this.IL_CLOCK.formatToParts(new Date(now))
+      .forEach((p) => { parts[p.type] = p.value; });
+    const secs = (+parts.hour) * 3600 + (+parts.minute) * 60 + (+parts.second);
+    return Math.max(0, (86400 - secs) * 1000 - (now % 1000));
   },
 
   // "07:12:44" — a ticking clock, so a claimed day still has something alive
@@ -117,6 +133,17 @@ function renderDailyModal() {
   if (!modal || !box) return;
 
   let tick = null; // countdown interval, alive only while the modal is open
+  // The claim is in flight and has been drawn as if it succeeded. The server is
+  // still the one that decides — this only stops the panel from redrawing the
+  // CLAIM button underneath the celebration while we wait for it.
+  let pending = false;
+
+  // A serverless claim handler that hasn't run recently is a cold start, which
+  // is most of the wait the player feels. Poke it as the modal opens (GET is
+  // refused with a 405 straight away, but the container is up by the time they
+  // press CLAIM). Fire and forget; a build without /api just 404s.
+  const warm = () => { try { fetch('/api/daily-claim').catch(() => {}); } catch (e) {} };
+
   const close = () => {
     clearInterval(tick);
     modal.style.display = 'none';
@@ -144,9 +171,12 @@ function renderDailyModal() {
     const st = window.DAILY.state();
     const rewards = window.DAILY.REWARDS;
     const jackpot = rewards[rewards.length - 1];
+    // `pending` counts as claimed: an in-flight claim is drawn as won so the
+    // celebration is not undone by a redraw while the request is out
+    const claimed = st.claimedToday || pending;
     // a day is banked if it sits behind today's rung, or is today and today is done
     const isDone = (day) => st.signedIn
-      && (day < st.pos || (day === st.pos && st.claimedToday));
+      && (day < st.pos || (day === st.pos && claimed));
 
     clearInterval(tick);
     box.innerHTML = '';
@@ -174,7 +204,7 @@ function renderDailyModal() {
       const done = isDone(day);
       const chip = el('div', 'd-chip'
         + (done ? ' done' : '')
-        + (day === st.pos && !st.claimedToday ? ' now' : '')
+        + (day === st.pos && !claimed ? ' now' : '')
         + (msg && msg.ok && day === st.pos ? ' won' : ''));
       chip.appendChild(el('span', 'd-n', done ? '✓' : 'DAY ' + day));
       chip.appendChild(el('span', 'd-v', short(r.coins)));
@@ -192,7 +222,7 @@ function renderDailyModal() {
     const jackDone = isDone(7);
     const jack = el('div', 'd-jack'
       + (jackDone ? ' done' : '')
-      + (st.pos === 7 && !st.claimedToday ? ' now' : ''));
+      + (st.pos === 7 && !claimed ? ' now' : ''));
     jack.appendChild(el('span', 'd-j-label', jackDone ? 'day 7 · collected' : 'day 7 · jackpot'));
     const jval = el('span', 'd-j-val', `${short(jackpot.coins)} + ${jackpot.bills}`);
     jval.appendChild(billIcon('d-bill'));
@@ -220,9 +250,11 @@ function renderDailyModal() {
     if (msg) {
       note.textContent = msg.text;
       note.className = 'm-sub ' + (msg.ok ? 'win' : 'bad');
-    } else if (st.claimedToday) {
+    } else if (claimed) {
       // live clock: a claimed day still has something ticking on it
-      const paint = () => { note.textContent = 'next bonus in ' + window.DAILY.resetLabel(); };
+      const paint = () => {
+        note.textContent = 'next bonus in ' + window.DAILY.resetLabel() + ' (00:00 Israel)';
+      };
       paint();
       tick = setInterval(paint, 1000);
     } else {
@@ -234,29 +266,48 @@ function renderDailyModal() {
       note.textContent = `tomorrow · ${next.coins} coins`;
     }
 
-    const spent = st.claimedToday;
+    const spent = claimed;
     const claim = el('button', 'm-btn danger',
       spent ? 'COME BACK TOMORROW'
         : `CLAIM ${today.coins}` + (today.bills ? ` + ${today.bills} 💵` : ''));
     claim.disabled = spent;
     if (spent) claim.style.opacity = '0.55';
+    // The payout lands on the tap, not on the reply. Waiting for the round trip
+    // (token, a possibly cold serverless function, a Firestore transaction) left
+    // the button sitting on CLAIMING… for as long as a second or two, which read
+    // as a broken button rather than a reward. The client already knows which
+    // rung today is — REWARDS is mirrored here — so it shows that, and the
+    // server's answer either confirms it silently or takes it back.
     claim.onclick = () => {
       claim.disabled = true;
-      claim.textContent = 'CLAIMING…';
+      pending = true;
+      const bills = today.bills;
+      if (window.SFX && window.SFX.power) window.SFX.power();
+      draw({
+        ok: true,
+        text: `+${today.coins} COINS`
+          + (bills ? ` +${bills} TRUMP BUCK${bills > 1 ? 'S' : ''}` : '') + '!',
+      });
+      burst();
       Promise.resolve(window.FB && window.FB.claimDaily ? window.FB.claimDaily() : null)
         .then((res) => {
+          pending = false;
           if (res && res.ok) {
-            if (window.SFX && window.SFX.power) window.SFX.power();
-            const bills = res.reward && res.reward.bills;
-            draw({
-              ok: true,
-              text: `+${(res.reward && res.reward.coins) || 0} COINS`
-                + (bills ? ` +${bills} TRUMP BUCK${bills > 1 ? 'S' : ''}` : '') + '!',
-            });
-            burst();
+            // Confirmed. Only redraw if the server paid something other than
+            // what was shown (a streak the client had stale) — a redraw for its
+            // own sake would only make the panel flicker under the celebration.
+            const r = res.reward || {};
+            if ((r.coins || 0) !== today.coins || (r.bills || 0) !== (today.bills || 0)) {
+              draw({
+                ok: true,
+                text: `+${r.coins || 0} COINS`
+                  + (r.bills ? ` +${r.bills} TRUMP BUCK${r.bills > 1 ? 'S' : ''}` : '') + '!',
+              });
+            }
           } else {
-            // most often "already claimed today" from another device — the
-            // profile has been refreshed by then, so the redraw tells the truth
+            // Refused — most often "already claimed today" from another device.
+            // The profile has been refreshed by then, so the redraw tells the
+            // truth and takes the celebration back with it.
             draw({ ok: false, text: (res && res.reason) || 'could not claim, try again' });
           }
         });
@@ -269,6 +320,7 @@ function renderDailyModal() {
   };
 
   draw(null);
+  if (window.DAILY.state().claimable) warm();
   modal.style.display = 'flex';
   window.setGameInputEnabled(false);
 }
