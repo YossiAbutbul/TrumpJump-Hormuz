@@ -607,54 +607,115 @@ function drawYohaiHat(ctx) {
   ctx.stroke();
 }
 
-// ---- ELADINIO jet powerup: straw farmer/panama hat (replaces the MAGA cap) ----
+// ---- ELADINIO jet powerup: red Hapoel Tel Aviv cap (replaces the MAGA cap) ----
 function drawEladinioHat(ctx) {
-  // wide straw brim
-  ctx.fillStyle = '#d8b877';
+  const RED = '#d8232a', RED_D = '#a5161c', RED_DD = '#780e13';
+
+  // five-point star, used for the two championship stars on the crown
+  const star = (cx, cy, r) => {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const rad = i % 2 ? r * 0.45 : r;
+      ctx.lineTo(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad);
+    }
+    ctx.closePath();
+    ctx.fill();
+  };
+
+  // brim: darker underside peeking below the top face
+  ctx.fillStyle = RED_DD;
   ctx.beginPath();
-  ctx.ellipse(20, 22, 18, 5.5, 0, 0, Math.PI * 2);
+  ctx.ellipse(20, 23.2, 17.5, 4.9, 0, 0, Math.PI * 2);
   ctx.fill();
-  // straw crown
-  ctx.fillStyle = '#e0c074';
+  ctx.fillStyle = RED_D;
   ctx.beginPath();
-  ctx.moveTo(11, 22);
-  ctx.lineTo(13, 9);
-  ctx.quadraticCurveTo(20, 5, 27, 9);
-  ctx.lineTo(29, 22);
-  ctx.closePath(); ctx.fill();
-  // crown top highlight
-  ctx.fillStyle = '#eed69a';
-  ctx.beginPath();
-  ctx.ellipse(20, 9.5, 7, 2.6, 0, 0, Math.PI * 2);
+  ctx.ellipse(20, 22.2, 17.5, 4.6, 0, 0, Math.PI * 2);
   ctx.fill();
-  // woven straw texture lines on crown
-  ctx.strokeStyle = 'rgba(150,110,40,0.35)';
-  ctx.lineWidth = 0.6;
-  for (let i = 0; i < 3; i++) {
-    const yy = 11 + i * 2.2;
-    ctx.beginPath(); ctx.moveTo(13, yy); ctx.lineTo(27, yy); ctx.stroke();
-  }
-  // cream hat band around the crown base
-  ctx.fillStyle = '#f3ecd6';
+
+  // crown
+  ctx.fillStyle = RED;
   ctx.beginPath();
-  ctx.moveTo(12, 17); ctx.lineTo(28, 17);
-  ctx.lineTo(28.5, 20.5); ctx.lineTo(11.5, 20.5);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#cfc3a0';
-  ctx.lineWidth = 0.8;
-  ctx.beginPath(); ctx.moveTo(12, 17.4); ctx.lineTo(28, 17.4); ctx.stroke();
-  // brim + crown outline
-  ctx.strokeStyle = '#a67c34';
-  ctx.lineWidth = 1;
+  ctx.moveTo(5.5, 22.3);
+  ctx.bezierCurveTo(5.5, 9.5, 11.5, 3.4, 20, 3.4);
+  ctx.bezierCurveTo(28.5, 3.4, 34.5, 9.5, 34.5, 22.3);
+  ctx.closePath();
+  ctx.fill();
+
+  // shading down the right side so the crown reads round
+  ctx.fillStyle = 'rgba(120,14,19,0.30)';
   ctx.beginPath();
-  ctx.ellipse(20, 22, 18, 5.5, 0, 0, Math.PI * 2);
+  ctx.moveTo(28, 4.9);
+  ctx.bezierCurveTo(33, 8.5, 34.5, 14, 34.5, 22.3);
+  ctx.lineTo(29, 22.3);
+  ctx.bezierCurveTo(29.5, 14, 29.5, 9, 28, 4.9);
+  ctx.closePath();
+  ctx.fill();
+
+  // panel seams
+  ctx.strokeStyle = 'rgba(120,14,19,0.45)';
+  ctx.lineWidth = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(20, 3.6);
+  ctx.bezierCurveTo(14, 5.5, 11.5, 12, 11.5, 22.3);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(11, 22);
-  ctx.lineTo(13, 9);
-  ctx.quadraticCurveTo(20, 5, 27, 9);
-  ctx.lineTo(29, 22);
+  ctx.moveTo(20, 3.6);
+  ctx.bezierCurveTo(26, 5.5, 28.5, 12, 28.5, 22.3);
   ctx.stroke();
+
+  // button on top
+  ctx.fillStyle = RED_D;
+  ctx.beginPath();
+  ctx.arc(20, 3.9, 1.25, 0, Math.PI * 2);
+  ctx.fill();
+
+  // two gold stars above the crest
+  ctx.fillStyle = '#f2c53d';
+  star(17.6, 7.6, 1.35);
+  star(22.4, 7.6, 1.35);
+
+  // club crest: white disc with a red ring
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(20, 14.6, 5.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = RED;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(20, 14.6, 4.85, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = RED_D;
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.arc(20, 14.6, 5.5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // athlete silhouette inside the crest
+  ctx.fillStyle = RED;
+  ctx.beginPath();
+  ctx.arc(19.2, 12.2, 0.85, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = RED;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 1.15;
+  ctx.beginPath();
+  ctx.moveTo(19.4, 13.1); ctx.lineTo(20.4, 15.4); ctx.stroke();   // torso
+  ctx.lineWidth = 0.9;
+  ctx.beginPath();
+  ctx.moveTo(19.6, 13.6); ctx.lineTo(17.4, 13.0); ctx.stroke();   // back arm
+  ctx.beginPath();
+  ctx.moveTo(19.9, 13.5); ctx.lineTo(22.3, 13.6); ctx.stroke();   // front arm
+  ctx.beginPath();
+  ctx.moveTo(20.4, 15.4); ctx.lineTo(18.4, 17.0); ctx.stroke();   // back leg
+  ctx.beginPath();
+  ctx.moveTo(20.4, 15.4); ctx.lineTo(22.4, 16.6); ctx.stroke();   // front leg
+
+  // club name along the bottom of the crest
+  ctx.fillStyle = RED_D;
+  ctx.font = 'bold 2.4px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('הפועל', 20, 18.9);
 }
 
 // ---- YARIN NO APPENDIX jet powerup: a stray appendix he picks up
